@@ -1,0 +1,9 @@
+5ba4a7df78d833ee0d775d89989d9c9b *ChangeLog
+574ac6614231a1812b7441d81c350c9d *DESCRIPTION
+8fd80e94f9d3f62aba183484ba13b224 *NAMESPACE
+a64bba6ffb4147d0144070b86c185f53 *R/CovarBalFunc.R
+5e40e20eb515081275508f808be52c3e *R/onAttach.R
+753fe09d9a99a4d20aaa2c9f35ea7ca8 *data/LaLonde.tab.gz
+c33519bbe6713bdc198ebeba515dc811 *man/CBPSlogit.Rd
+034fbeb33e298cd28fae89bd645dcf32 *man/LaLonde.Rd
+91df27cda19cc6e0bfc11ac1404ab54a *man/summary.CBPSlogit.Rd
