@@ -1,5 +1,9 @@
-CBPS <- function(formula, data, na.action, ATT, k = 0, ...) {
+CBPS <- function(formula, data, na.action, ATT, method="over",...) {
 
+
+	bayes<-FALSE
+	cauchy<-FALSE
+ 
   call <- match.call()
   family <- binomial()
   if (missing(data)) 
@@ -23,8 +27,10 @@ CBPS <- function(formula, data, na.action, ATT, k = 0, ...) {
     model.matrix(mt, mf)#[,-2]
   else matrix(, NROW(Y), 0L)
     
-  fit <- eval(call("CBPS.fit", X = X, treat = Y, ATT=ATT, family = family, k=k, 
-                   intercept = attr(mt, "intercept") > 0L))
+	X<-cbind(1,X[,-1][,apply(X[,-1],2,sd)>0])
+	
+  fit <- eval(call("CBPS.fit", X = X, treat = Y, ATT=ATT, family = family, bayes=bayes, cauchy=cauchy,
+                   intercept = attr(mt, "intercept") > 0L, method=method))
   ##if (model) 
   fit$model <- mf
   fit$na.action <- attr(mf, "na.action")
@@ -35,15 +41,19 @@ CBPS <- function(formula, data, na.action, ATT, k = 0, ...) {
   fit
 }
 
-CBPS.fit<-function(treat, X, ATT, X.bal=X, k, ...){
-
+CBPS.fit<-function(treat, X, ATT, X.bal=X, method, ...){
+	k=0
+	if(method=="over") bal.only=FALSE
+	if(method=="exact") bal.only=TRUE
+		
 ##A tolerance, to set probabilities to zero.
-	probs.min<-1e-10
-	names.X<-colnames(X)
 	bayes<-cauchy<-FALSE
-	
+  probs.min<-1e-10
+  names.X<-colnames(X)
+
+  
   ##Generates ATT weights.  Called by loss function, etc.
-  ATT.wt.func<-function(beta.curr,X.wt=X){
+	ATT.wt.func<-function(beta.curr,X.wt=X){
     X<-as.matrix(X.wt)
     n<-dim(X)[1]
     n.c<-sum(treat==0)
@@ -80,36 +90,46 @@ CBPS.fit<-function(treat, X, ATT, X.bal=X, k, ...){
       w.curr<-ATT.wt.func(beta.curr)
     else
       w.curr<-(probs.curr-1+treat)^-1
-    
+	  
+  
     ##Generate the vector of mean imbalance by weights.
     w.curr.del<-1/(n)*t(X)%*%(w.curr)
     w.curr.del<-as.vector(w.curr.del)
     w.curr<-as.vector(w.curr)
 
     ##Generate g-bar, as in the paper.
-    gbar<-c(1/n*t(X)%*%(treat-probs.curr),w.curr.del)
+    gbar<-c( 1/n*t(X)%*%(treat-probs.curr)*(1-bal.only),w.curr.del)
    if (cauchy==T){
    	s<-(1+theta.curr^2)^-1*pi^-1*(treat/probs.curr-(1-treat)/(1-probs.curr))
    	gbar<-c(1/n*t(X)%*%s,w.curr.del)
    } 
     ##Generate the covariance matrix used in the GMM estimate.
-    if(ATT){
-      X.1<-X*((1-probs.curr)*probs.curr)^.5 
-      X.2<-X*(probs.curr/(1-probs.curr))^.5
-      X.1.1<-X*(probs.curr)^.5      
-    }else{
+    ##Was for the initial version that calculates the analytic variances.
+
+#X.h<-X*((1-probs.curr)*probs.curr)^.5
+	  hat.diag<-0#diag(X.h%*%ginv(t(X.h)%*%X.h)%*%t(X.h))
+	if(ATT){
       X.1<-X*((1-probs.curr)*probs.curr)^.5
-      X.2<-X*(1+probs.curr*(1-probs.curr))^-.5#*(w.opt)		
-      X.1.1<-X*0
+      X.2<-X*(probs.curr/(1-probs.curr))^.5
+      X.1.1<-X*(probs.curr)^.5
+
+    }else{
+      X.1<-X*((1-probs.curr)*probs.curr+hat.diag)^.5
+      X.2<-X*(probs.curr*(1-probs.curr)+hat.diag)^-.5		
+      X.1.1<-  X
     }
     
 
-		
-    V<-rbind(1/n*cbind(t(X.1)%*%X.1,t(X.1.1)%*%X.1.1),
-             1/n*cbind(t(X.1.1)%*%X.1.1,t(X.2)%*%X.2))	
+	  V<-rbind(1/n*cbind(t(X.1)%*%X.1,t(X.1.1)%*%X.1.1),
+			   1/n*cbind(t(X.1.1)%*%X.1.1,t(X.2)%*%X.2)
+			   )		
+
+#X.V<-cbind(X*(treat-probs.curr), X* w.curr)
+#	  V<-cov(X.V)
+
     
     ##Calculate the GMM loss.
-    loss1<-as.vector( t(gbar)%*%ginv(V)%*%(gbar))      
+    loss1<-as.vector( t(gbar)%*%ginv(V )%*%(gbar))      
     out1<-list("loss"=max(loss1*n,loss1*n), "V"=V)
     out1
   }
@@ -181,26 +201,37 @@ CBPS.fit<-function(treat, X, ATT, X.bal=X, k, ...){
   alpha.func<-function(alpha) gmm.loss(beta.curr*alpha)
   beta.curr<-beta.curr*optimize(alpha.func,interval=c(.8,1.1))$min
   
+	
   ##Generate estimates for balance and CBPSE
   gmm.init<-beta.curr
  
   opt.bal<-optim(gmm.init, bal.loss, control=list("maxit"=1000), method="BFGS", hessian=TRUE)
   beta.bal<-opt.bal$par
   
+	gmm.glm.init<-optim(glm1$coef,gmm.loss, control=list("maxit"=1000), method="BFGS", hessian=TRUE)
+	gmm.bal.init<-optim(beta.bal,gmm.loss, control=list("maxit"=1000), method="BFGS", hessian=TRUE)
+	
+	if(gmm.glm.init$val<gmm.bal.init$val) opt1<-gmm.glm.init else opt1<-gmm.bal.init
   #print(opt.bal)
  
-  if(gmm.loss(beta.curr)>gmm.loss(beta.curr*0)) gmm.init<-beta.curr*0
-  if(gmm.loss(gmm.init)>gmm.loss(beta.bal)) gmm.init<-beta.bal
+#if(gmm.loss(beta.curr)>gmm.loss(beta.curr*0)) gmm.init<-beta.curr*0
+# if(gmm.loss(gmm.init)>gmm.loss(beta.bal)) gmm.init<-beta.bal
 
-  opt1<-optim(gmm.init, gmm.loss, control=list("maxit"=1000), method="BFGS", hessian=TRUE)
+	
+	if(bal.only) opt1<-opt.bal #else 
+#opt1<-optim(gmm.init, gmm.loss, control=list("maxit"=1000), method="BFGS", hessian=TRUE)
+#opt1<-optim(gmm.init, gmm.loss, control=list("maxit"=1000), method="BFGS", hessian=TRUE)
 
-  #print(opt1)
+#print(gmm.loss(glm1$coef)) 
+#	print(gmm.loss(opt.bal$par)) 
+#	print(opt1) 
 
 
 
   ##Generate probabilities
-  beta.opt<-opt1$par
-  theta.opt<-as.vector(X%*%beta.opt)
+#if(gmm.func(opt1$par)$loss-gmm.func(opt.bal$par)$loss> qchisq(.95,df=dim(X)[2])) beta.opt<-opt1$par else beta.opt<-opt.bal$par
+	beta.opt<-opt1$par
+	theta.opt<-as.vector(X%*%beta.opt)
   if (cauchy){probs.opt<-.5+1/pi*atan(theta.opt)}  else{probs.opt<-(1+exp(-theta.opt))^-1}
   probs.opt<-pmin(1-probs.min,probs.opt)
   probs.opt<-pmax(probs.min,probs.opt)
@@ -212,13 +243,13 @@ CBPS.fit<-function(treat, X, ATT, X.bal=X, k, ...){
     w.opt<-(probs.opt-1+treat)^-1
   }
   
-  J.opt<-opt1$val
+  J.opt<-gmm.func(beta.opt)$loss
   
   residuals<-treat-probs.opt
   deviance <- -2*c(sum(treat*log(probs.glm)+(1-treat)*log(1-probs.glm)))
   nulldeviance <- -2*c(sum(treat*log(mean(treat))+(1-treat)*log(1-mean(treat))))		
   
-  d.inv<-svd1$d
+  d.inv<- svd1$d
   d.inv[d.inv> 1e-5]<-1/d.inv[d.inv> 1e-5]
   d.inv[d.inv<= 1e-5]<-0
   beta.opt<-svd1$v%*%diag(d.inv)%*%beta.opt
@@ -234,9 +265,9 @@ CBPS.fit<-function(treat, X, ATT, X.bal=X, k, ...){
   
   XG.1<--X*(probs.opt)^.5*(1-probs.opt)^.5
   if(ATT==T){
-  	XG.2<-X*((1-treat)/(1-probs.opt)*n/n.t)^.5
+  	XG.2<-X*((1-treat)*probs.opt/(1-probs.opt)*n/n.t)^.5
   } else{
-  	XG.2<--X*((probs.opt*(1-probs.opt))/abs(probs.opt-1+treat))^.5
+  	XG.2<--X*(abs(probs.opt-treat)/(probs.opt*(1-probs.opt)))^.5
   }
     G<-cbind(t(XG.1)%*%XG.1,t(XG.2)%*%XG.2)
     var2<-ginv(G%*%ginv(V)%*%t(G))*n
@@ -340,7 +371,7 @@ TE.est<-function(dv, object, M=1){
     out1<-sapply(which(treat==1),FUN=function(x) {
       dist<-abs(probs[treat==0]-probs[x])
       if(log.odds==T) dist<-abs(log(probs[treat==0]/(1-probs[treat==0])) - log(probs[x]/(1-probs[x])))
-      sort(dist,decreasing=F,ind=T)$ix[1:M]  
+				 which(dist<= sort(unique(dist),decreasing=F)[1:M])
     })
     c(which(treat==1),which(treat==0)[unlist(out1)])
   }
@@ -357,9 +388,23 @@ TE.est<-function(dv, object, M=1){
 }
 
 
+match.func<-function(probs,log.odds=F,treat,M=1){
+    out1<-sapply(which(treat==1),FUN=function(x) {
+				 dist<-abs(probs[treat==0]-probs[x])
+				 if(log.odds==T) dist<-abs(log(probs[treat==0]/(1-probs[treat==0])) - log(probs[x]/(1-probs[x])))
+				 which(dist<= sort(unique(dist),decreasing=F)[1:M])
+				 })
+    c(which(treat==1),which(treat==0)[unlist(out1)])
+}
 
-find.num.match<-function(object){
-  
+
+find.num.match<-function(fitted.values, y, X){
+	
+	object<-NULL
+	object$fitted.values<-fitted.values
+	object$y<-y
+	object$x<-X
+	
   match.func<-function(probs,log.odds=F,treat,M){
     out1<-sapply(which(treat==1),FUN=function(x) {
       dist<-abs(probs[treat==0]-probs[x])
@@ -397,18 +442,31 @@ find.num.match<-function(object){
     
     gbar<-c(1/n*t(X)%*%(treat-probs.curr),w.curr.del)
     
-    if(ATT){
-      X.1<-X*((1-probs.curr)*probs.curr)^.5 
-      X.2<-X*(probs.curr/(1-probs.curr))^.5
-      X.1.1<-X*(probs.curr)^.5}
-    else{
-      X.1<-X*((1-probs.curr)*probs.curr)^.5
-      X.2<-X*0#*(w.opt)  
-      X.1.1<-X*(1+probs.curr*(1-probs.curr))^-.5
-    }
-    
-    V<-rbind(1/n*cbind(t(X.1)%*%X.1,t(X.1.1)%*%X.1.1), 1/n*cbind(t(X.1.1)%*%X.1.1,t(X.2)%*%X.2)) 
-    
+	  
+	#Old version w analytic variances
+#if(ATT){
+#     X.1<-X*((1-probs.curr)*probs.curr)^.5 
+#     X.2<-X*(probs.curr/(1-probs.curr))^.5
+#     X.1.1<-X*(probs.curr)^.5}
+#   else{
+#      X.1<-X*((1-probs.curr)*probs.curr)^.5
+#      X.2<-X*0#*(w.opt)  
+#      X.1.1<-X*(1+probs.curr*(1-probs.curr))^-.5
+#    }
+#    V<-rbind(1/n*cbind(t(X.1)%*%X.1,t(X.1.1)%*%X.1.1), 1/n*cbind(t(X.1.1)%*%X.1.1,t(X.2)%*%X.2)) 
+
+	  X.1<-X*(treat-probs.curr)
+	  X.2<-X*w.curr
+	  
+	  X.1<-apply(X.1,2,FUN=function(x) x-mean(x))
+	  X.2<-apply(X.2,2,FUN=function(x) x-mean(x))
+	  
+	  V<-rbind(1/n*cbind(t(X.1)%*%X.1,t(X.1)%*%X.2),
+			   1/n*cbind(t(X.2)%*%X.1,t(X.2)%*%X.2))	
+	  
+	  
+	  
+	  
     loss1<-as.vector( t(gbar)%*%ginv(V)%*%(gbar))
     
     max(0,loss1*n.t)

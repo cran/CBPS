@@ -1,6 +1,6 @@
 Package: CBPS
-Version: 0.2
-Date: 2012-9-27
+Version: 0.3
+Date: 2013-01-18
 Title: R Package for Covariate Balancing Propensity Score
 Author: Marc Ratkovic <ratkovic@princeton.edu>, Kosuke Imai
         <kimai@princeton.edu>, Christian Fong <cjfong@princeton.edu>
@@ -20,6 +20,6 @@ Description: CBPS is an R package that implements the covariate
 LazyLoad: yes
 LazyData: yes
 License: GPL (>= 2)
-Packaged: 2012-09-28 19:29:16 UTC; ratkovic
+Packaged: 2013-01-31 15:48:40 UTC; ratkovic
 Repository: CRAN
-Date/Publication: 2012-09-29 06:14:34
+Date/Publication: 2013-01-31 17:07:43

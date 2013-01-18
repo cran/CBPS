@@ -1,3 +1,4 @@
 version date      description
 0.1     07/19/12  The first version on CRAN
 0.2     09/27/12  The second version.  Fixed a bug in the ATE CBPS.
+0.3  	01/18/13  The third version.  Updated the ATE variance estimate.

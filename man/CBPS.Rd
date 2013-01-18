@@ -7,8 +7,8 @@
   \code{CBPS} and \code{CBPS.fit} estimate propensity score such that both covariate balance and prediction of treatment assignment are maximized.  The method, therefore, avoids an iterative process between model fitting and balance checking and implements both simultaneously.
 }
 \usage{
-	  CBPS(formula, data, na.action, ATT, k = 0, ...)
-	  CBPS.fit(treat, X, ATT, X.bal = X, k, ...)
+	  CBPS(formula, data, na.action, ATT, method = "over", ...)
+	  CBPS.fit(treat, X, ATT, X.bal = X, method, ...)
 }
 \arguments{
   \item{formula}{An object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.}
@@ -19,7 +19,7 @@
   \item{treat}{A vector of treatment assignments.}
   \item{X}{A covariate matrix.}
   \item{X.bal}{A matrix to be balanced. Currently not accepted.}
-  \item{k}{The model dimensionality. 0 is the default, and is estimated from X. Useful with ill-conditioned matrices.}
+   \item{method}{"over" for fitting an over-identified model that combines the propensity score and covariate balancing conditions; "exact" for fitting a model that only contains the covariate balancing conditions. }
   \item{...}{Other parameters to be passed through to \code{optim()}}
 }
 \details{Fits covariate balancing propensity scores.}
@@ -49,6 +49,7 @@
 \seealso{\link{summary.CBPS}}
 
 \examples{
+\dontrun{
 ###
 ### Example: propensity score matching
 ###
@@ -81,5 +82,5 @@ fit1 <- CBPS(treat ~ X.mis, ATT = TRUE)
 mean(treat*y/fit1$fitted.values)
 ## Inverse probability weighting
 sum(treat*y/fit1$fitted.values)/sum(treat/fit1$fitted.values)
-
+}
 }

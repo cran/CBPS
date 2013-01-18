@@ -25,6 +25,7 @@
 \seealso{\link{DR}}
 
 \examples{
+\dontrun{
 ###
 ### Example: propensity score matching
 ###
@@ -35,5 +36,5 @@ data(LaLonde)
 fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), data = LaLonde, ATT = FALSE)
 ##Calculate the IPW estimators
 inverse.prob.wt <- IPW(outcome = re78, treat = treat, data = LaLonde, pscore = fitted(fit), k = length(coef(fit)))
-
+}
 }
