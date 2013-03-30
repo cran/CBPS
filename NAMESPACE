@@ -1,5 +1,5 @@
-importFrom(MASS, mvrnorm)
-export(CBPS, summary.CBPS, IPW, DR)
+importFrom(MASS, mvrnorm, ginv)
+export(CBPS, summary.CBPS, IPW, DR, MSMdata)
 
 S3method(summary, CBPS)
 S3method(print, CBPS)

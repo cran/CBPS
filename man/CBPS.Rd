@@ -1,17 +1,19 @@
 \name{CBPS}
 \alias{CBPS}
 \alias{CBPS.fit}
+\alias{CBMSM.fit}
 \alias{print.CBPS}
 \title{Covariate Balancing Propensity Score (CBPS) Estimation}
 \description{
-  \code{CBPS} and \code{CBPS.fit} estimate propensity score such that both covariate balance and prediction of treatment assignment are maximized.  The method, therefore, avoids an iterative process between model fitting and balance checking and implements both simultaneously.
-}
+  \code{CBPS} estimates propensity scores such that both covariate balance and prediction of treatment assignment are maximized.   The method, therefore, avoids an iterative process between model fitting and balance checking and implements both simultaneously.
+The method can be used with either cross-sectional or longitudinal (panel) data. }
 \usage{
-	  CBPS(formula, data, na.action, ATT, method = "over", ...)
+	  CBPS(formula, data, na.action, ATT, method = "over", type="propensity", ...)
 	  CBPS.fit(treat, X, ATT, X.bal = X, method, ...)
+	  CBMSM.fit(treat, X, time, method, ...)
 }
 \arguments{
-  \item{formula}{An object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.}
+  \item{formula}{For the cross-sectional case (type="propensity"), an object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.  For the marginal structural model (type="MSM"), a list of formulas.  The function assumes that there is one formula for each time, and they are ordered from the first time to the last time.}
   \item{data}{an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model. If not found in data, the variables are taken from \code{environment(formula)}, typically the environment from which \code{CBPS} is called.}
     \item{na.action}{A function which indicates what should happen when the data contain NAs. The default is set by the na.action setting of options, and is na.fail if that is unset.}
   \item{ATT}{Set to \code{TRUE} to find the average treatment effect on the treated,
@@ -19,14 +21,16 @@
   \item{treat}{A vector of treatment assignments.}
   \item{X}{A covariate matrix.}
   \item{X.bal}{A matrix to be balanced. Currently not accepted.}
-   \item{method}{"over" for fitting an over-identified model that combines the propensity score and covariate balancing conditions; "exact" for fitting a model that only contains the covariate balancing conditions. }
+   \item{method}{"over" for fitting an over-identified model that combines the propensity score and covariate balancing conditions; "exact" for fitting a model that only contains the covariate balancing conditions.}
+   \item{type}{Either "propensity" for a single time period or "MSM" for a marginal structural model, with multiple time periods.}
+   \item{time}{A vector giving the time period for each observation; only used for type "MSM"}
   \item{...}{Other parameters to be passed through to \code{optim()}}
 }
 \details{Fits covariate balancing propensity scores.}
 \value{
   \item{coefficients}{A named vector of coefficients}
   \item{residuals}{The working residuals from the final iteration of CBPS}
-  \item{fitted.values}{The fitted mean values, obtained by transforming the linear predictors by the inverse of the binomial function}
+  \item{fitted.values}{The fitted propensity score.}
   \item{rank}{The numeric rank of the fitted model}
   \item{family}{The family object used.}
   \item{deviance}{Minus twice the log-likelihood of the CBPS fit.  Will be lower than the maximum likelihood deviance.}
@@ -42,7 +46,9 @@
   \item{df}{The degrees of freedom.}
   \item{var}{The covariance matrix, evaluated numerically from \code{optim()}.}
 }
-\references{Imai, Kosuke and Marc Ratkovic.  ``Covariate Balancing Propensity Score.'' Unpublished Manuscript, Princeton University. \url{http://imai.princeton.edu/research/CBPS.html}}
+\references{Imai, Kosuke and Marc Ratkovic.  Forthcoming. ``Covariate Balancing Propensity Score.'' Journal of the Royal Statistical Society, Series B (Statistical Methodology). \url{http://imai.princeton.edu/research/CBPS.html}		
+	
+	Imai, Kosuke and Marc Ratkovic.  ``Robust Estimation of Inverse Probability Weights for Marginal Structural Models.'' Unpublished Manuscript, Princeton University. \url{http://imai.princeton.edu/research/MSM.html} }
 
 \author{Marc Ratkovic, Kosuke Imai, and Christian Fong; The CBPS function is based on the code for version 2.15.0 of the glm function implemented in the stats package, originally written by Simon Davies.  This documenation is likewise modeled on the documentation for glm and borrows its language where the arguments and values are the same.}
 
@@ -63,12 +69,12 @@ summary(fit)
 library(MatchIt)
 m.out <- matchit(treat ~ 1, distance = fitted(fit), method = "nearest", data = LaLonde, replace = TRUE)
 
-
+}
 ### Example: propensity score weighting 
 ###
 ## Simulation from Kang and Shafer (2007).
 set.seed(123456)
-n <- 1000
+n <- 500
 X <- mvrnorm(n, mu = rep(0, 4), Sigma = diag(4))
 prop <- 1 / (1 + exp(X[,1] - 0.5 * X[,2] + 0.25*X[,3] + 0.1 * X[,4]))
 treat <- rbinom(n, 1, prop)
@@ -77,10 +83,33 @@ y <- 210 + 27.4*X[,1] + 13.7*X[,2] + 13.7*X[,3] + 13.7*X[,4] + rnorm(n)
 ##Estimate CBPS with a misspecificied model
 X.mis <- cbind(exp(X[,1]/2), X[,2]*(1+exp(X[,1]))^(-1)+10, (X[,1]*X[,3]/25+.6)^3, (X[,2]+X[,4]+20)^2)
 fit1 <- CBPS(treat ~ X.mis, ATT = TRUE)
+summary(fit1)
 	
 ## Horwitz-Thompson estimate
 mean(treat*y/fit1$fitted.values)
 ## Inverse probability weighting
 sum(treat*y/fit1$fitted.values)/sum(treat/fit1$fitted.values)
-}
+
+rm(list=c("y","X","prop","treat","n","X.mis","fit1"))
+
+### Example: Covariate Balancing Marginal Structural Model
+###
+## Simulation from Imai and Ratkovic (2013).
+
+
+data1<-MSMdata(200)
+attach(data1)
+formulas.msm<-list(c(treat.1~X1, treat.2~X2, treat.3~X3))
+msm1<-CBPS(formulas.msm,method="over",type="MSM")
+
+#Unweighted model
+lm1<-lm(y~treat.1+treat.2+treat.3)
+summary(lm1)
+
+#CBMSM weighted model
+lm2<-lm(y~treat.1+treat.2+treat.3,weights=msm1$weights)
+summary(lm2)
+
+detach(data1)
+
 }
