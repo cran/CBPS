@@ -6,24 +6,25 @@
 \title{Covariate Balancing Propensity Score (CBPS) Estimation}
 \description{
   \code{CBPS} estimates propensity scores such that both covariate balance and prediction of treatment assignment are maximized.   The method, therefore, avoids an iterative process between model fitting and balance checking and implements both simultaneously.
-The method can be used with either cross-sectional or longitudinal (panel) data. }
+For cross-sectional data, the method can take treatments with a control (baseline) condition and either 1, 2, or 3 distinct treatment conditions.  With longitudinal data, the method returns marginal structural model weights that can be entered directly into a linear model.}
 \usage{
-	  CBPS(formula, data, na.action, ATT, method = "over", type="propensity", ...)
-	  CBPS.fit(treat, X, ATT, X.bal = X, method, ...)
+	  CBPS(formula, data, na.action, ATT = NULL, method = "over", type="propensity", iterations = NULL, ...)
+	  CBPS.fit(treat, X, ATT, X.bal = X, method, iterations, ...)
 	  CBMSM.fit(treat, X, time, method, ...)
 }
 \arguments{
   \item{formula}{For the cross-sectional case (type="propensity"), an object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.  For the marginal structural model (type="MSM"), a list of formulas.  The function assumes that there is one formula for each time, and they are ordered from the first time to the last time.}
-  \item{data}{an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model. If not found in data, the variables are taken from \code{environment(formula)}, typically the environment from which \code{CBPS} is called.}
+  \item{data}{An optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model. If not found in data, the variables are taken from \code{environment(formula)}, typically the environment from which \code{CBPS} is called.}
     \item{na.action}{A function which indicates what should happen when the data contain NAs. The default is set by the na.action setting of options, and is na.fail if that is unset.}
   \item{ATT}{Set to \code{TRUE} to find the average treatment effect on the treated,
-	         and \code{FALSE} to find the average treatment effect.  Default is \code{TRUE}.}
+	         and \code{FALSE} to find the average treatment effect.  Default is \code{TRUE}.  For 3 and 4-valued treatments and class "MSM", only the ATE is available.}
   \item{treat}{A vector of treatment assignments.}
   \item{X}{A covariate matrix.}
   \item{X.bal}{A matrix to be balanced. Currently not accepted.}
    \item{method}{"over" for fitting an over-identified model that combines the propensity score and covariate balancing conditions; "exact" for fitting a model that only contains the covariate balancing conditions.}
    \item{type}{Either "propensity" for a single time period or "MSM" for a marginal structural model, with multiple time periods.}
    \item{time}{A vector giving the time period for each observation; only used for type "MSM"}
+   \item{iterations}{An optional parameter for the maximum number of iterations for the optimization.  Default is 1000 for binary and 10000 otherwise.}
   \item{...}{Other parameters to be passed through to \code{optim()}}
 }
 \details{Fits covariate balancing propensity scores.}
@@ -48,7 +49,10 @@ The method can be used with either cross-sectional or longitudinal (panel) data.
 }
 \references{Imai, Kosuke and Marc Ratkovic.  Forthcoming. ``Covariate Balancing Propensity Score.'' Journal of the Royal Statistical Society, Series B (Statistical Methodology). \url{http://imai.princeton.edu/research/CBPS.html}		
 	
-	Imai, Kosuke and Marc Ratkovic.  ``Robust Estimation of Inverse Probability Weights for Marginal Structural Models.'' Unpublished Manuscript, Princeton University. \url{http://imai.princeton.edu/research/MSM.html} }
+	Imai, Kosuke and Marc Ratkovic.  ``Robust Estimation of Inverse Probability Weights for Marginal Structural Models.'' Unpublished Manuscript, Princeton University. \url{http://imai.princeton.edu/research/MSM.html} 
+	
+	Fong, Christian.  ``Covariate Balancing Propensity Scores for Multi-Valued Treatment Specifications.''  Unpublished Manuscript.
+	}
 
 \author{Marc Ratkovic, Kosuke Imai, and Christian Fong; The CBPS function is based on the code for version 2.15.0 of the glm function implemented in the stats package, originally written by Simon Davies.  This documenation is likewise modeled on the documentation for glm and borrows its language where the arguments and values are the same.}
 
@@ -69,7 +73,7 @@ summary(fit)
 library(MatchIt)
 m.out <- matchit(treat ~ 1, distance = fitted(fit), method = "nearest", data = LaLonde, replace = TRUE)
 
-}
+
 ### Example: propensity score weighting 
 ###
 ## Simulation from Kang and Shafer (2007).
@@ -112,4 +116,21 @@ summary(lm2)
 
 detach(data1)
 
+
+
+### Example: Covariate Balancing Propensity Score - 3 Treatments
+##
+
+set.seed(1)
+library(MASS)
+X<-cbind(1,mvrnorm(1000,c(0,0,0), Sigma=matrix(c(5,.5,-.03,.5,1,-.27,-.03,-.27,1),3,3)))
+beta<-matrix(rnorm(8),4,2)
+prob<-cbind((1+exp(X%*%beta[,1])+exp(X%*%beta[,2]))^-1,
+				 exp(X%*%beta[,1])*(1+exp(X%*%beta[,1])+exp(X%*%beta[,2]))^-1,
+				 exp(X%*%beta[,2])*(1+exp(X%*%beta[,1])+exp(X%*%beta[,2]))^-1)
+X<-X[,2:4]
+treat.latent<-runif(1000)
+treat<-ifelse(treat.latent < prob[,1], 1, ifelse(treat.latent < (prob[,1] + prob[,2]), 2, 3))
+fit3<-CBPS(treat ~ X, ATT = FALSE)
+}
 }

@@ -16,7 +16,7 @@
 }
 \details{Fits covariate balancing propensity scores.}
 \value{
-  Returns a vector with the point estimate of the doubly-robust estimator as well as its standard error.  For use with CBPS, run only with the ATE.
+  Returns a vector with the point estimate of the doubly-robust estimator as well as its standard error.  For use with CBPS, run only with the ATE and binary treatment.
 }
 \references{Lunceford, Jared and Marie Davidian.  ``Stratification and Weighting Via the Propensity Score in Estimation of Causal Treatment Effects: A Comparative Study.'' Statistics in Medicine 23, 15 October 2004.}
 

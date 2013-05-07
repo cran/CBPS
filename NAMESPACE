@@ -1,4 +1,5 @@
 importFrom(MASS, mvrnorm, ginv)
+importFrom(nnet, multinom)
 export(CBPS, summary.CBPS, IPW, DR, MSMdata)
 
 S3method(summary, CBPS)

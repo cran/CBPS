@@ -16,7 +16,7 @@
 }
 \details{Calculates the inverse probability weighting estimators from Lunceford and Davidian (2004).  For use with CBPS, run only with ATE.}
 \value{
-  Returns a data frame whose columns are the point estimates and standard errors for these inverse probability weighting estimators, and whose rows correspond to IPW1, IPW2, and IPW3.
+  Returns a data frame whose columns are the point estimates and standard errors for these inverse probability weighting estimators, and whose rows correspond to IPW1, IPW2, and IPW3.  Use only with binary treatments.
 }
 \references{Lunceford, Jared and Marie Davidian.  ``Stratification and Weighting Via the Propensity Score in Estimation of Causal Treatment Effects: A Comparative Study.'' Statistics in Medicine 23, 15 October 2004.}
 
