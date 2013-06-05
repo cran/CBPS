@@ -36,6 +36,7 @@ data(LaLonde)
 ## Estimate CBPS via logistic regression for ATE.  Run only with ATE.
 fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), data = LaLonde, ATT = FALSE)
 ## Find doubly robust estimator under GLM
-doubly.robust <- DR(re78 ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), model="glm", data = LaLonde, treat = treat, pscore = fitted(fit))
+doubly.robust <- DR(re78 ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), model="glm", 
+                    data = LaLonde, treat = treat, pscore = fitted(fit))
 }
 }

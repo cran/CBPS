@@ -1,7 +1,5 @@
 CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations,ATT){
-
-
-		probs.min<- 1e-6
+	probs.min<- 1e-6
 	if (is.null(iterations)) iterations<-1000
   ##Generates ATT weights.	Called by loss function, etc.
 	ATT.wt.func<-function(beta.curr,X.wt=X){
@@ -47,7 +45,7 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	w.curr<-as.vector(w.curr)
 
 	##Generate g-bar, as in the paper.
-	gbar<-c( 1/n*t(X)%*%(treat-probs.curr)*(1-bal.only),w.curr.del)
+	gbar<-c( 1/n*t(X)%*%(treat-probs.curr),w.curr.del)
 
 	##Generate the covariance matrix used in the GMM estimate.
 	##Was for the initial version that calculates the analytic variances.
@@ -118,12 +116,17 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   opt.bal<-optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
   beta.bal<-opt.bal$par
   
+  if(bal.only) opt1<-opt.bal
+  
+  if(!bal.only)
+  {
 	gmm.glm.init<-optim(glm1$coef,gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
 	gmm.bal.init<-optim(beta.bal,gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
 	
 	if(gmm.glm.init$val<gmm.bal.init$val) opt1<-gmm.glm.init else opt1<-gmm.bal.init
+	}
 	
-	if(bal.only) opt1<-opt.bal
+	
 
   ##Generate probabilities
 	beta.opt<-opt1$par
@@ -143,9 +146,11 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   
   residuals<-treat-probs.opt
   deviance <- -2*c(sum(treat*log(probs.opt)+(1-treat)*log(1-probs.opt)))
-  nulldeviance <- -2*c(sum(treat*log(mean(treat))+(1-treat)*log(1-mean(treat))))		
-  
+  nulldeviance <- -2*c(sum(treat*log(mean(treat))+(1-treat)*log(1-mean(treat))))
 
+  w<-array(n)  
+  w[which(treat==1)]<-1/probs.opt[which(treat==1)]/sum(1/probs.opt[which(treat==1)])
+  w[which(treat==0)]<-1/probs.opt[which(treat==0)]/sum(1/probs.opt[which(treat==0)])
   
   XG.1<- -X*(probs.opt)^.5*(1-probs.opt)^.5
   XW.1<- X*(treat-probs.opt)
@@ -169,7 +174,7 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   #names(beta.opt) <- names.X
 		
   output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
-			   "deviance"=deviance,"weights"=w.opt,
+			   "deviance"=deviance,"weights"=w,
 			   "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
 			   "data"=data, "J"=J.opt,"df"=k,"var"=vcov)
   

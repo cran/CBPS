@@ -6,11 +6,12 @@
 \title{Covariate Balancing Propensity Score (CBPS) Estimation}
 \description{
   \code{CBPS} estimates propensity scores such that both covariate balance and prediction of treatment assignment are maximized.   The method, therefore, avoids an iterative process between model fitting and balance checking and implements both simultaneously.
-For cross-sectional data, the method can take treatments with a control (baseline) condition and either 1, 2, or 3 distinct treatment conditions.  With longitudinal data, the method returns marginal structural model weights that can be entered directly into a linear model.}
+For cross-sectional data, the method can take treatments with a control (baseline) condition and either 1, 2, or 3 distinct treatment conditions.  With longitudinal data, the method returns marginal structural model weights that can be entered directly into a linear model.  The method also handles multiple binary treatments adminstered concurrently.}
 \usage{
-	  CBPS(formula, data, na.action, ATT = NULL, method = "over", type="propensity", iterations = NULL, ...)
+	  CBPS(formula, data, na.action, ATT = NULL, method = "over",
+	       type="propensity", iterations = NULL, ...)
 	  CBPS.fit(treat, X, ATT, X.bal = X, method, iterations, ...)
-	  CBMSM.fit(treat, X, time, method, ...)
+	  CBMSM.fit(treat, X, time, method, MultiBin.fit = FALSE, ...)
 }
 \arguments{
   \item{formula}{For the cross-sectional case (type="propensity"), an object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.  For the marginal structural model (type="MSM"), a list of formulas.  The function assumes that there is one formula for each time, and they are ordered from the first time to the last time.}
@@ -22,8 +23,9 @@ For cross-sectional data, the method can take treatments with a control (baselin
   \item{X}{A covariate matrix.}
   \item{X.bal}{A matrix to be balanced. Currently not accepted.}
    \item{method}{"over" for fitting an over-identified model that combines the propensity score and covariate balancing conditions; "exact" for fitting a model that only contains the covariate balancing conditions.}
-   \item{type}{Either "propensity" for a single time period or "MSM" for a marginal structural model, with multiple time periods.}
+   \item{type}{Either "propensity" for a single time period and a treatment variable that takes 2, 3, or 4 unique values;"MSM" for a marginal structural model, with multiple time periods; and "MultiBin" for multiple binary treatments at the same time period.}
    \item{time}{A vector giving the time period for each observation; only used for type "MSM"}
+   \item{MultiBin.fit}{A parameter for whether the multiple binary treatments occur concurrently (FALSE) or over consecutive time periods (TRUE) as in a marginal structural model.}
    \item{iterations}{An optional parameter for the maximum number of iterations for the optimization.  Default is 1000 for binary and 10000 otherwise.}
   \item{...}{Other parameters to be passed through to \code{optim()}}
 }
@@ -35,7 +37,7 @@ For cross-sectional data, the method can take treatments with a control (baselin
   \item{rank}{The numeric rank of the fitted model}
   \item{family}{The family object used.}
   \item{deviance}{Minus twice the log-likelihood of the CBPS fit.  Will be lower than the maximum likelihood deviance.}
-  \item{weights}{The CBPS balancing weights calculated from the propensity scores.}
+  \item{weights}{The optimal weights using inverse propensity score weighting.  For the marginal structural model and MultiBins, returns a list with stabilized ("stabilized") weights, unstabilized ("unstabilized") weights, and unconditional treatment probabilities ("unconditional") are all available.}
   \item{y}{The treatment vector used}
   \item{x}{The covariate matrix}
   \item{model}{The model frame}
@@ -71,7 +73,8 @@ fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), data = L
 summary(fit)
 ## matching via MatchIt: one to one nearest neighbor with replacement
 library(MatchIt)
-m.out <- matchit(treat ~ 1, distance = fitted(fit), method = "nearest", data = LaLonde, replace = TRUE)
+m.out <- matchit(treat ~ 1, distance = fitted(fit), method = "nearest", data = LaLonde, 
+                 replace = TRUE)
 
 
 ### Example: propensity score weighting 
@@ -85,7 +88,8 @@ treat <- rbinom(n, 1, prop)
 y <- 210 + 27.4*X[,1] + 13.7*X[,2] + 13.7*X[,3] + 13.7*X[,4] + rnorm(n)
 
 ##Estimate CBPS with a misspecificied model
-X.mis <- cbind(exp(X[,1]/2), X[,2]*(1+exp(X[,1]))^(-1)+10, (X[,1]*X[,3]/25+.6)^3, (X[,2]+X[,4]+20)^2)
+X.mis <- cbind(exp(X[,1]/2), X[,2]*(1+exp(X[,1]))^(-1)+10, (X[,1]*X[,3]/25+.6)^3, 
+               (X[,2]+X[,4]+20)^2)
 fit1 <- CBPS(treat ~ X.mis, ATT = TRUE)
 summary(fit1)
 	
@@ -125,12 +129,68 @@ set.seed(1)
 library(MASS)
 X<-cbind(1,mvrnorm(1000,c(0,0,0), Sigma=matrix(c(5,.5,-.03,.5,1,-.27,-.03,-.27,1),3,3)))
 beta<-matrix(rnorm(8),4,2)
-prob<-cbind((1+exp(X%*%beta[,1])+exp(X%*%beta[,2]))^-1,
-				 exp(X%*%beta[,1])*(1+exp(X%*%beta[,1])+exp(X%*%beta[,2]))^-1,
-				 exp(X%*%beta[,2])*(1+exp(X%*%beta[,1])+exp(X%*%beta[,2]))^-1)
+prob<-cbind((1+exp(X\%*\%beta[,1])+exp(X\%*\%beta[,2]))^-1,
+				 exp(X\%*\%beta[,1])*(1+exp(X\%*\%beta[,1])+exp(X\%*\%beta[,2]))^-1,
+				 exp(X\%*\%beta[,2])*(1+exp(X\%*\%beta[,1])+exp(X\%*\%beta[,2]))^-1)
 X<-X[,2:4]
 treat.latent<-runif(1000)
 treat<-ifelse(treat.latent < prob[,1], 1, ifelse(treat.latent < (prob[,1] + prob[,2]), 2, 3))
 fit3<-CBPS(treat ~ X, ATT = FALSE)
+
+
+
+### Example: Multiple Binary Treatments Administered at the Same Time
+
+n<-200
+k<-4
+set.seed(1040)
+X1<-cbind(1,matrix(rnorm(n*k),ncol=k))
+
+betas.1<-betas.2<-betas.3<-c(2,4,4,-4,3)/5
+
+
+probs.1<-probs.2<-probs.3<-(1+exp(-X1 \%*\% betas.1))^-1
+
+treat.1<-rbinom(n=length(probs.1),size=1,probs.1)
+treat.2<-rbinom(n=length(probs.2),size=1,probs.2)
+treat.3<-rbinom(n=length(probs.3),size=1,probs.3)
+
+X1<-X1[,-1]
+
+formulas.multi<-list(c(treat.1~X1, treat.2~X1, treat.3~X1))
+
+multibin1<-CBPS(formulas.multi,method="over",type="MultiBin")
+
+y<-cbind(treat.1,treat.2,treat.3) \%*\% c(2,2,2)+X1 \%*\% c(-2,8,7,6,2) + rnorm(n,sd=5)
+
+contrast.mat<-rbind(
+diag(3),
+c(1,1,1),
+c(1,1,-1),
+c(1,-1,-1),
+c(1,-1,1)
+)
+
+treat.mat<-cbind(treat.1,treat.2,treat.3)\%*\%t(contrast.mat)
+
+
+Rsq.raw<-apply(treat.mat,2,F=function(x) summary(lm(x~X1))$r.sq)
+Rsq.wt<-apply(treat.mat,2,F=function(x) summary(lm(x~X1,w=multibin1$w))$r.sq)
+
+plot(Rsq.raw,1:7,type="n",xlim=range(cbind(Rsq.raw,Rsq.wt)),ylab="Contrasts",xlab="R-Squared")
+abline(h=c(1:7),col=gray(.5))
+points(Rsq.raw,1:7,pch="O")
+points(Rsq.wt,1:7,pch="X")
+
+
+#Unweighted model
+lm1<-lm(y~treat.1+treat.2+treat.3+X1)
+summary(lm1)
+
+
+#CBMSM weighted model
+lm2<-lm(y~treat.1+treat.2+treat.3+X1, weights=multibin1$weights)
+summary(lm2)
+
 }
 }

@@ -35,6 +35,7 @@ data(LaLonde)
 ## Estimate CBPS via logistic regression for ATE (Run with ATE only)
 fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), data = LaLonde, ATT = FALSE)
 ##Calculate the IPW estimators
-inverse.prob.wt <- IPW(outcome = re78, treat = treat, data = LaLonde, pscore = fitted(fit), k = length(coef(fit)))
+inverse.prob.wt <- IPW(outcome = re78, treat = treat, data = LaLonde, pscore = fitted(fit), 
+                       k = length(coef(fit)))
 }
 }

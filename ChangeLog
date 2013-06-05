@@ -4,3 +4,4 @@ version date      description
 0.3  	01/18/13  The third version.  Updated the ATE variance estimate.
 0.4     03/30/13  Adds function for fitting marginal structural model.  Fixed standard error in cross-sectional case.
 0.5 	05/07/13  Adds function that handles three- and four-valued treatments.
+0.6 	06/05/13  Adds multiple binary treatment case, as well as extending plot and summary capabilities.

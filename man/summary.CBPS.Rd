@@ -4,7 +4,7 @@
 \description{Prints a summary of a fitted CBPS object.}
 \usage{\method{summary}{CBPS}(object,...)}
 \arguments{
-  \item{object}{an object of class \dQuote{CBPSlogit}, usually, a result of a call to CBPS.}
+  \item{object}{an object of class \dQuote{CBPS}, usually, a result of a call to CBPS.}
   \item{...}{Additional arguments to be passed to summary.}
 }
 \details{Prints a summmary of a CBPS object, in a format similar to glm.  The variance matrix is calculated from the numerical Hessian at convergence of CBPS.}

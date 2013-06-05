@@ -1,7 +1,6 @@
 CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ...)
 {
 	probs.min<-1e-6
-	names.X<-colnames(X)
 	if (is.null(iterations)) iterations<-10000
 	
 	no.treats<-length(levels(as.factor(treat)))
@@ -41,8 +40,8 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		w.curr<-as.matrix(w.curr)
 
 		##Generate g-bar, as in the paper.
-		gbar<-c(1/sum(n)*t(X)%*%(T2-probs.curr[,2])*(1-bal.only), 
-				1/sum(n)*t(X)%*%(T3-probs.curr[,3])*(1-bal.only),
+		gbar<-c(1/sum(n)*t(X)%*%(T2-probs.curr[,2]), 
+				1/sum(n)*t(X)%*%(T3-probs.curr[,3]),
 				w.curr.del)
 
 		##Generate the covariance matrix used in the GMM estimate.
@@ -138,7 +137,10 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 							return(optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
 						})
 	  beta.bal<-opt.bal$par
+	  if(bal.only) opt1<-opt.bal 
 	  
+	  if(!bal.only)
+	  {
 	  gmm.glm.init<-tryCatch({
 								optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
 							},
@@ -155,7 +157,7 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 							})
 		
 		if(gmm.glm.init$val<gmm.bal.init$val) opt1<-gmm.glm.init else opt1<-gmm.bal.init
-		if(bal.only) opt1<-opt.bal 
+		}
 				
 	  ##Generate probabilities
 		beta.opt<-matrix(opt1$par,nrow=k,ncol=no.treats-1)
@@ -188,26 +190,42 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	  deviance <- -2*c(sum(T1*log(probs.opt[,1])+T2*log(probs.opt[,2])+T3*log(probs.opt[,3])))
 	  nulldeviance <- -2*c(sum(T1*log(mean(T1))+T2*log(mean(T2))+T3*log(mean(T3))))
 	  
-	  V<-gmm.func(beta.opt)$V
-	  X.G.1<-cbind(-X*probs.opt[,2]*(1-probs.opt[,2]),X*probs.opt[,2]*probs.opt[,3])
-	  X.G.2<-cbind(X*probs.opt[,2]*probs.opt[,3],-X*probs.opt[,3]*(1-probs.opt[,3]))
-	  X.G.3<-cbind(X*(T1*probs.opt[,2]/probs.opt[,1] + T2*(1-probs.opt[,2])/probs.opt[2]),X*probs.opt[,3]*(T1/probs.opt[,1] - T2/probs.opt[,2]))
-	  X.G.4<-cbind(X*probs.opt[,2]*(T1/probs.opt[,1] - T3/probs.opt[,3]),X*(T1*probs.opt[,3]/probs.opt[,1] + T3*(1-probs.opt[,3]/probs.opt[,3])))
-	  X.G.5<-cbind(-X*(T2*(1-probs.opt[,2])/probs.opt[,2] + T3/probs.opt[,3]),X*(T2*probs.opt[,3]/probs.opt[2] + T3*(1-probs.opt[,3])/probs.opt[,3]))
+	  norm1<-sum(1/probs.opt[which(T1==1),1])
+	  norm2<-sum(1/probs.opt[which(T2==1),2])
+	  norm3<-sum(1/probs.opt[which(T3==1),3])
+	  w<-array(dim=n)
+	  w[which(T1==1)]<-1/probs.opt[which(T1==1),1]/norm1
+	  w[which(T2==1)]<-1/probs.opt[which(T2==1),2]/norm2
+	  w[which(T3==1)]<-1/probs.opt[which(T3==1),3]/norm3
 	  
-	  G<-cbind(t(X.G.1)%*%X, t(X.G.2)%*%X, t(X.G.3)%*%X, t(X.G.4)%*%X, t(X.G.5)%*%X)
-	  vcov<-ginv(G%*%ginv(V)%*%t(G))*n
+	  W<-ginv(gmm.func(beta.opt)$V)
+	  XG.1.1<-t(-X*probs.opt[,2]*(1-probs.opt[,2]))%*%X
+	  XG.1.2<-t(X*probs.opt[,2]*probs.opt[,3])%*%X
+	  XG.1.3<-t(X*(T1*probs.opt[,2]/probs.opt[,1] + T2*(1-probs.opt[,2])/probs.opt[,2]))%*%X
+	  XG.1.4<-t(X*probs.opt[,2]*(T1/probs.opt[,1] - T3/probs.opt[,3]))%*%X
+	  XG.1.5<-t(-X*(T2*(1-probs.opt[,2])/probs.opt[,2] + T3*probs.opt[,2]/probs.opt[,3]))%*%X	  
+	  XG.2.1<-t(X*probs.opt[,2]*probs.opt[,3])%*%X
+	  XG.2.2<-t(-X*probs.opt[,3]*(1-probs.opt[,3]))%*%X
+	  XG.2.3<-t(X*probs.opt[,3]*(T1/probs.opt[,1] - T2/probs.opt[,2]))%*%X
+	  XG.2.4<-t(X*(T1*probs.opt[,3]/probs.opt[,1] + T3*(1-probs.opt[,3])/probs.opt[,3]))%*%X
+	  XG.2.5<-t(X*(T2*probs.opt[,3]/probs.opt[,2] + T3*(1-probs.opt[,3])/probs.opt[,3]))%*%X
+	  G<-1/n*rbind(cbind(XG.1.1,XG.1.2,XG.1.3,XG.1.4,XG.1.5),cbind(XG.2.1,XG.2.2,XG.2.3,XG.2.4,XG.2.5))
 	  
-	  colnames(vcov)<-c(paste0("2:X", 1:k),paste0("3:X", 1:k))
-	  rownames(vcov)<-colnames(vcov)
-	  colnames(probs.opt)<-c("p1","p2","p3")
+	  XW.1<-X*(T2-probs.opt[,2])
+	  XW.2<-X*(T3-probs.opt[,3])
+	  XW.3<-X*(T1/probs.opt[,1] - T2/probs.opt[,2])
+	  XW.4<-X*(T1/probs.opt[,1] - T3/probs.opt[,3])
+	  XW.5<-X*(T2/probs.opt[,2] - T3/probs.opt[,3])
+	  W1<-rbind(t(XW.1),t(XW.2),t(XW.3),t(XW.4),t(XW.5))
+	  Omega<-1/n*(W1%*%t(W1))
+	  vcov<-ginv(G%*%W%*%t(G))%*%G%*%W%*%Omega%*%W%*%t(G)%*%ginv(G%*%W%*%t(G))
+	  
+	  colnames(probs.opt)<-treat.names
 
-	  
 	    class(beta.opt) <- "coef"
-		names(beta.opt) <- names.X
 		
 		output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
-					 "deviance"=deviance,"weights"=w.opt,
+					 "deviance"=deviance,"weights"=w,
 					 "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
 					 "data"=data, "J"=J.opt,"df"=k,"var"=vcov)
   
@@ -218,7 +236,6 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ...)
 {
 	probs.min<-1e-6
-	names.X<-colnames(X)
 	if (is.null(iterations)) iterations<-10000
 
 	no.treats<-length(levels(as.factor(treat)))
@@ -374,6 +391,10 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 						})
 	  beta.bal<-opt.bal$par
 	  
+	  if(bal.only) opt1<-opt.bal 
+	  
+	  if(!bal.only)
+	  {
 	  gmm.glm.init<-tryCatch({
 								optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
 							},
@@ -390,7 +411,7 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 							})
 							
 		if(gmm.glm.init$val<gmm.bal.init$val) opt1<-gmm.glm.init else opt1<-gmm.bal.init
-		if(bal.only) opt1<-opt.bal 
+		}
 				
 	  ##Generate probabilities
 		beta.opt<-matrix(opt1$par,nrow=k,ncol=no.treats-1)
@@ -426,32 +447,54 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	  deviance <- -2*c(sum(T1*log(probs.opt[,1])+T2*log(probs.opt[,2])+T3*log(probs.opt[,3])+T4*log(probs.opt[,4])))
 	  nulldeviance <- -2*c(sum(T1*log(mean(T1))+T2*log(mean(T2))+T3*log(mean(T3))+T4*log(mean(T4))))
 	  
-	  V<-gmm.func(beta.opt)$V
-	  X.G.1<-cbind(-X*probs.opt[,2]*(1-probs.opt[,2]),X*probs.opt[,2]*probs.opt[,3],X*probs.opt[,2]*probs.opt[,4])
-	  X.G.2<-cbind(X*probs.opt[,2]*probs.opt[,3],-X*probs.opt[,3]*(1-probs.opt[,3]),X*probs.opt[,3]*probs.opt[,4])
-	  X.G.3<-cbind(X*probs.opt[,2]*probs.opt[,4],X*probs.opt[3,]*probs.opt[,4],-X*probs.opt[,4]*(1-probs.opt[,4]))
-	  X.G.4<-cbind(X*probs.opt[,2]*(T1/probs.opt[,1] - T2*(1-probs.opt[,2])/probs.opt[,2] - T3/probs.opt[,3] - T4/probs.opt[,4]),
-				   X*probs.opt[,3]*(T1/probs.opt[,1] + T2/probs.opt[,2] + T3*(1-probs.opt[,3])/probs.opt[,3] - T4/probs.opt[,4]),
-				   X*probs.opt[,4]*(T1/probs.opt[,1] + T2/probs.opt[,2] - T3/probs.opt[,3] + T4*(1-probs.opt[,4])/probs.opt[,4]))
-	  X.G.5<-cbind(X*probs.opt[,2]*(T1/probs.opt[,1] + T2*(1-probs.opt[,2])/probs.opt[,2] - T3/probs.opt[,3] + T4/probs.opt[,4]),
-				   X*probs.opt[,3]*(T1/probs.opt[,1] - T2/probs.opt[,2] + T3*(1-probs.opt[,3])/probs.opt[,3] + T4/probs.opt[,4]),
-				   X*probs.opt[,4]*(T1/probs.opt[,1] - T2/probs.opt[,2] - T3/probs.opt[,3] - T4*(1-probs.opt[,4])/probs.opt[,4]))
-	  X.G.6<-cbind(X*probs.opt[,2]*(-T1/probs.opt[,1] - T2*(1-probs.opt[,2])/probs.opt[,2] - T3/probs.opt[,3] + T4/probs.opt[,4]),
-				   X*probs.opt[,3]*(-T1/probs.opt[,1] + T2/probs.opt[,2] + T3*(1-probs.opt[,3])/probs.opt[,3] + T4/probs.opt[,4]),
-				   X*probs.opt[,4]*(-T1/probs.opt[,1] + T2/probs.opt[,2] - T3/probs.opt[,3] - T4*(1-probs.opt[,4])/probs.opt[,4]))				   
-				   
-	  G<-cbind(t(X.G.1)%*%X, t(X.G.2)%*%X, t(X.G.3)%*%X, t(X.G.4)%*%X, t(X.G.5)%*%X, t(X.G.6)%*%X)
-	  vcov<-ginv(G%*%ginv(V)%*%t(G))*n
+	  norm1<-sum(1/probs.opt[which(T1==1),1])
+	  norm2<-sum(1/probs.opt[which(T2==1),2])
+	  norm3<-sum(1/probs.opt[which(T3==1),3])
+	  norm4<-sum(1/probs.opt[which(T4==1),4])
+	  w<-array(dim=n)
+	  w[which(T1==1)]<-1/probs.opt[which(T1==1),1]/norm1
+	  w[which(T2==1)]<-1/probs.opt[which(T2==1),2]/norm2
+	  w[which(T3==1)]<-1/probs.opt[which(T3==1),3]/norm3
+	  w[which(T4==1)]<-1/probs.opt[which(T4==1),4]/norm4
+
+	  W<-ginv(gmm.func(beta.opt)$V)
+	  X.G.1.1<-t(-X*probs.opt[,2]*(1-probs.opt[,2]))%*%X
+	  X.G.1.2<-t(X*probs.opt[,2]*probs.opt[,3])%*%X
+	  X.G.1.3<-t(X*probs.opt[,2]*probs.opt[,4])%*%X
+	  X.G.1.4<-t(X*probs.opt[,2]*(T1/probs.opt[,1] - T2*(1-probs.opt[,2])/probs.opt[,2]^2 - T3/probs.opt[,3] - T4/probs.opt[,4]))%*%X
+	  X.G.1.5<-t(X*probs.opt[,2]*(T1/probs.opt[,1] + T2*(1-probs.opt[,2])/probs.opt[,2]^2 - T3/probs.opt[,3] + T4/probs.opt[,4]))%*%X
+	  X.G.1.6<-t(X*probs.opt[,2]*(-T1/probs.opt[,1] - T2*(1-probs.opt[,2])/probs.opt[,2]^2 - T3/probs.opt[,3] + T4/probs.opt[,4]))%*%X
+	  X.G.2.1<-t(X*probs.opt[,2]*probs.opt[,3])%*%X
+	  X.G.2.2<-t(-X*probs.opt[,3]*(1-probs.opt[,3]))%*%X
+	  X.G.2.3<-t(X*probs.opt[,3]*probs.opt[,4])%*%X
+	  X.G.2.4<-t(X*probs.opt[,3]*(T1/probs.opt[,1] + T2/probs.opt[,2] + T3*(1-probs.opt[,3])/probs.opt[,3]^2 - T4/probs.opt[,4]))%*%X
+	  X.G.2.5<-t(X*probs.opt[,3]*(T1/probs.opt[,1] - T2/probs.opt[,2] + T3*(1-probs.opt[,3])/probs.opt[,3]^2 + T4/probs.opt[,4]))%*%X
+	  X.G.2.6<-t(X*probs.opt[,3]*(-T1/probs.opt[,1] + T2/probs.opt[,2] + T3*(1-probs.opt[,3])/probs.opt[,3]^2 + T4/probs.opt[,4]))%*%X
+	  X.G.3.1<-t(X*probs.opt[,2]*probs.opt[,4])%*%X
+	  X.G.3.2<-t(X*probs.opt[,3]*probs.opt[,4])%*%X
+	  X.G.3.3<-t(-X*probs.opt[,4]*(1-probs.opt[,4]))%*%X
+	  X.G.3.4<-t(X*probs.opt[,4]*(T1/probs.opt[,1] + T2/probs.opt[,2] - T3/probs.opt[,3] + T4*(1-probs.opt[,4])/probs.opt[,4]^2))%*%X
+	  X.G.3.5<-t(X*probs.opt[,4]*(T1/probs.opt[,1] - T2/probs.opt[,2] - T3/probs.opt[,3] - T4*(1-probs.opt[,4])/probs.opt[,4]^2))%*%X
+	  X.G.3.6<-t(X*probs.opt[,4]*(-T1/probs.opt[,1] + T2/probs.opt[,2] - T3/probs.opt[,3] - T4*(1-probs.opt[,4])/probs.opt[,4]^2))%*%X
+	  XW.1<-X*(T2-probs.opt[,2])
+	  XW.2<-X*(T3-probs.opt[,3])
+	  XW.3<-X*(T4-probs.opt[,4])
+	  XW.4<-X*( T1/probs.opt[,1] + T2/probs.opt[,2] - T3/probs.opt[,3] - T4/probs.opt[,4])
+	  XW.5<-X*( T1/probs.opt[,1] - T2/probs.opt[,2] - T3/probs.opt[,3] + T4/probs.opt[,4])
+	  XW.6<-X*(-T1/probs.opt[,1] + T2/probs.opt[,2] - T3/probs.opt[,3] + T4/probs.opt[,4])
+	  G<-1/n*rbind(cbind(X.G.1.1,X.G.1.2,X.G.1.3,X.G.1.4,X.G.1.5,X.G.1.6),
+					cbind(X.G.2.1,X.G.2.2,X.G.2.3,X.G.2.4,X.G.2.5,X.G.2.6),
+					cbind(X.G.3.1,X.G.3.2,X.G.3.3,X.G.3.4,X.G.3.5,X.G.3.6))
+	  W1<-rbind(t(XW.1),t(XW.2),t(XW.3),t(XW.4),t(XW.5),t(XW.6))
+	  Omega<-1/n*(W1%*%t(W1))
+	  vcov<-ginv(G%*%W%*%t(G))%*%G%*%W%*%Omega%*%W%*%t(G)%*%ginv(G%*%W%*%t(G))
 	  
-	  colnames(vcov)<-c(paste0("2:X",1:k),paste0("3:X",1:k),paste0("4:X",1:k))
-	  rownames(vcov)<-colnames(vcov)
-	  colnames(probs.opt)<-c("p1","p2","p3","p4")
+	  colnames(probs.opt)<-treat.names
 	  
 	  	class(beta.opt) <- "coef"
-		names(beta.opt) <- names.X
 		
 		output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
-					 "deviance"=deviance,"weights"=w.opt,
+					 "deviance"=deviance,"weights"=w,
 					 "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
 					 "data"=data, "J"=J.opt,"df"=k,"var"=vcov)
   
