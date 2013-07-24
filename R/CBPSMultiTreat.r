@@ -1,4 +1,4 @@
-CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ...)
+CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, ...)
 {
 	probs.min<-1e-6
 	if (is.null(iterations)) iterations<-10000
@@ -190,9 +190,13 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	  deviance <- -2*c(sum(T1*log(probs.opt[,1])+T2*log(probs.opt[,2])+T3*log(probs.opt[,3])))
 	  nulldeviance <- -2*c(sum(T1*log(mean(T1))+T2*log(mean(T2))+T3*log(mean(T3))))
 	  
-	  norm1<-sum(1/probs.opt[which(T1==1),1])
-	  norm2<-sum(1/probs.opt[which(T2==1),2])
-	  norm3<-sum(1/probs.opt[which(T3==1),3])
+	  norm1<-norm2<-norm3<-1
+	  if (standardize)
+	  {
+		  norm1<-sum(1/probs.opt[which(T1==1),1])
+		  norm2<-sum(1/probs.opt[which(T2==1),2])
+		  norm3<-sum(1/probs.opt[which(T3==1),3])
+	  }
 	  w<-array(dim=n)
 	  w[which(T1==1)]<-1/probs.opt[which(T1==1),1]/norm1
 	  w[which(T2==1)]<-1/probs.opt[which(T2==1),2]/norm2
@@ -233,7 +237,7 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		output
 }
 
-CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ...)
+CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, ...)
 {
 	probs.min<-1e-6
 	if (is.null(iterations)) iterations<-10000
@@ -447,10 +451,15 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	  deviance <- -2*c(sum(T1*log(probs.opt[,1])+T2*log(probs.opt[,2])+T3*log(probs.opt[,3])+T4*log(probs.opt[,4])))
 	  nulldeviance <- -2*c(sum(T1*log(mean(T1))+T2*log(mean(T2))+T3*log(mean(T3))+T4*log(mean(T4))))
 	  
-	  norm1<-sum(1/probs.opt[which(T1==1),1])
-	  norm2<-sum(1/probs.opt[which(T2==1),2])
-	  norm3<-sum(1/probs.opt[which(T3==1),3])
-	  norm4<-sum(1/probs.opt[which(T4==1),4])
+	  norm1<-norm2<-norm3<-norm4<-1
+	  if (standardize)
+	  {
+		  norm1<-sum(1/probs.opt[which(T1==1),1])
+		  norm2<-sum(1/probs.opt[which(T2==1),2])
+		  norm3<-sum(1/probs.opt[which(T3==1),3])
+	  	  norm4<-sum(1/probs.opt[which(T4==1),4])
+	  }
+
 	  w<-array(dim=n)
 	  w[which(T1==1)]<-1/probs.opt[which(T1==1),1]/norm1
 	  w[which(T2==1)]<-1/probs.opt[which(T2==1),2]/norm2

@@ -1,6 +1,14 @@
-CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations,ATT){
+CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ATT, standardize){
 	probs.min<- 1e-6
 	if (is.null(iterations)) iterations<-1000
+	
+	treat<-sapply(treat,function(x) ifelse(x==TRUE,1,ifelse(x==FALSE,0,-1)))
+	
+	if (min(treat) < 0)
+	{
+		stop("For binary, treatments must be TRUE/FALSE or 1/0")
+	}
+	
   ##Generates ATT weights.	Called by loss function, etc.
 	ATT.wt.func<-function(beta.curr,X.wt=X){
 	X<-as.matrix(X.wt)
@@ -137,10 +145,28 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	
   ##Generate weights
   if(ATT){
-	w.opt<-ATT.wt.func(beta.opt) 
+	w.opt<-abs(ATT.wt.func(beta.opt)) 
   }else{
-	w.opt<-(probs.opt-1+treat)^-1
+	w.opt<-abs((probs.opt-1+treat)^-1)
   }
+  
+  norm1<-norm2<-1
+  if (standardize)
+  {
+  	if (ATT)
+  	{
+  		norm1<-n/sum(treat==1)
+  		norm2<-n/sum(treat==1)*sum((1-treat)*probs.opt/(1-probs.opt))
+  	}
+  	else
+  	{
+  		norm1<-sum(treat/probs.opt)
+  		norm2<-sum((1-treat)/(1-probs.opt))
+  	}
+  }
+  w.opt[which(treat==1)]<-w.opt[which(treat==1)]/norm1
+  w.opt[which(treat==0)]<-w.opt[which(treat==0)]/norm2
+  
   
   J.opt<-gmm.func(beta.opt)$loss
   
@@ -148,10 +174,6 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   deviance <- -2*c(sum(treat*log(probs.opt)+(1-treat)*log(1-probs.opt)))
   nulldeviance <- -2*c(sum(treat*log(mean(treat))+(1-treat)*log(1-mean(treat))))
 
-  w<-array(n)  
-  w[which(treat==1)]<-1/probs.opt[which(treat==1)]/sum(1/probs.opt[which(treat==1)])
-  w[which(treat==0)]<-1/probs.opt[which(treat==0)]/sum(1/probs.opt[which(treat==0)])
-  
   XG.1<- -X*(probs.opt)^.5*(1-probs.opt)^.5
   XW.1<- X*(treat-probs.opt)
   if(ATT==T){
@@ -174,7 +196,7 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   #names(beta.opt) <- names.X
 		
   output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
-			   "deviance"=deviance,"weights"=w,
+			   "deviance"=deviance,"weights"=w.opt,
 			   "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
 			   "data"=data, "J"=J.opt,"df"=k,"var"=vcov)
   

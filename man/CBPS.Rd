@@ -9,9 +9,9 @@
 For cross-sectional data, the method can take treatments with a control (baseline) condition and either 1, 2, or 3 distinct treatment conditions.  With longitudinal data, the method returns marginal structural model weights that can be entered directly into a linear model.  The method also handles multiple binary treatments adminstered concurrently.}
 \usage{
 	  CBPS(formula, data, na.action, ATT = NULL, method = "over",
-	       type="propensity", iterations = NULL, ...)
-	  CBPS.fit(treat, X, ATT, X.bal = X, method, iterations, ...)
-	  CBMSM.fit(treat, X, time, method, MultiBin.fit = FALSE, ...)
+	       type="propensity", iterations = NULL, standardize = FALSE, ...)
+	  CBPS.fit(treat, X, ATT, X.bal = X, method, iterations, standardize, ...)
+	  CBMSM.fit(treat, X, time, method, MultiBin.fit = FALSE, standardize, ...)
 }
 \arguments{
   \item{formula}{For the cross-sectional case (type="propensity"), an object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.  For the marginal structural model (type="MSM"), a list of formulas.  The function assumes that there is one formula for each time, and they are ordered from the first time to the last time.}
@@ -27,6 +27,7 @@ For cross-sectional data, the method can take treatments with a control (baselin
    \item{time}{A vector giving the time period for each observation; only used for type "MSM"}
    \item{MultiBin.fit}{A parameter for whether the multiple binary treatments occur concurrently (FALSE) or over consecutive time periods (TRUE) as in a marginal structural model.}
    \item{iterations}{An optional parameter for the maximum number of iterations for the optimization.  Default is 1000 for binary and 10000 otherwise.}
+   \item{standardize}{Set to \code{TRUE} to get inverse propensity score weights (IPW) as described in Hirano, Imbens, and Ridder (2003).  Default is \code{FALSE}, which returns Horvitz-Thompson weights.}
   \item{...}{Other parameters to be passed through to \code{optim()}}
 }
 \details{Fits covariate balancing propensity scores.}
@@ -37,7 +38,7 @@ For cross-sectional data, the method can take treatments with a control (baselin
   \item{rank}{The numeric rank of the fitted model}
   \item{family}{The family object used.}
   \item{deviance}{Minus twice the log-likelihood of the CBPS fit.  Will be lower than the maximum likelihood deviance.}
-  \item{weights}{The optimal weights using inverse propensity score weighting.  For the marginal structural model and MultiBins, returns a list with stabilized ("stabilized") weights, unstabilized ("unstabilized") weights, and unconditional treatment probabilities ("unconditional") are all available.}
+  \item{weights}{The optimal weights.  For the marginal structural model and MultiBins, returns a list in which stabilized ("stabilized") weights, unstabilized ("unstabilized") weights, and unconditional treatment probabilities ("unconditional") are all available.  Weights are Horvitz-Thompson if standardize is set to \code{FALSE}, and IPW if standardize is set to \code{TRUE}.}
   \item{y}{The treatment vector used}
   \item{x}{The covariate matrix}
   \item{model}{The model frame}
@@ -73,7 +74,7 @@ fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), data = L
 summary(fit)
 ## matching via MatchIt: one to one nearest neighbor with replacement
 library(MatchIt)
-m.out <- matchit(treat ~ 1, distance = fitted(fit), method = "nearest", data = LaLonde, 
+m.out <- matchit(treat ~ fitted(fit), method = "nearest", data = LaLonde, 
                  replace = TRUE)
 
 
@@ -90,7 +91,7 @@ y <- 210 + 27.4*X[,1] + 13.7*X[,2] + 13.7*X[,3] + 13.7*X[,4] + rnorm(n)
 ##Estimate CBPS with a misspecificied model
 X.mis <- cbind(exp(X[,1]/2), X[,2]*(1+exp(X[,1]))^(-1)+10, (X[,1]*X[,3]/25+.6)^3, 
                (X[,2]+X[,4]+20)^2)
-fit1 <- CBPS(treat ~ X.mis, ATT = TRUE)
+fit1 <- CBPS(treat ~ X.mis, ATT = FALSE)
 summary(fit1)
 	
 ## Horwitz-Thompson estimate

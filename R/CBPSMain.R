@@ -1,95 +1,126 @@
-CBPS <- function(formula, data, na.action, ATT=NULL, method="over",type="propensity", iterations=NULL, ...) {
+CBPS <- function(formula, data, na.action, ATT=NULL, method="over",type="propensity", iterations=NULL, standardize = FALSE, ...) {
 
+	if (missing(data)) 
+		data <- environment(formula)
+	call <- match.call()
+	family <- binomial()
+
+	mf <- match.call(expand.dots = FALSE)
+	m <- match(c("formula", "data", "na.action"), names(mf), 0L)
+	mf <- mf[c(1L, m)]
+	mf$drop.unused.levels <- TRUE
+	mf[[1L]] <- as.name("model.frame")
+	
 	if(type=="propensity") {
-	  if (missing(data)) 
-	data <- environment(formula)
-  call <- match.call()
-  family <- binomial()
 
-  mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula", "data", "na.action"), names(mf), 0L)
-  mf <- mf[c(1L, m)]
-  mf$drop.unused.levels <- TRUE
-  mf[[1L]] <- as.name("model.frame")
-  mf <- eval(mf, parent.frame())
-  mt <- attr(mf, "terms")
-  Y <- model.response(mf, "any")
-  if (length(dim(Y)) == 1L) {
-	nm <- rownames(Y)
-	dim(Y) <- NULL
-	if (!is.null(nm)) 
-	  names(Y) <- nm
-	}
-  
-  X <- if (!is.empty.model(mt)) 
-	model.matrix(mt, mf)#[,-2]
-  else matrix(, NROW(Y), 0L)
-	
-	X<-cbind(1,X[,apply(X,2,sd)>0])
+		mf <- eval(mf, parent.frame())
+		mt <- attr(mf, "terms")
+		Y <- model.response(mf, "any")
+		if (length(dim(Y)) == 1L) {
+				nm <- rownames(Y)
+				dim(Y) <- NULL
+				if (!is.null(nm)) 
+					names(Y) <- nm
+		}
+		  
+		X <- if (!is.empty.model(mt)) model.matrix(mt, mf)#[,-2]
+		else matrix(, NROW(Y), 0L)
+			
+		X<-cbind(1,X[,apply(X,2,sd)>0])
 
-	 
-
-  fit <- eval(call("CBPS.fit", X = X, treat = Y, ATT=ATT, 
-				   intercept = attr(mt, "intercept") > 0L, method=method, iterations=iterations))	
-	
-  ##if (model) 
-  fit$model <- mf
-  fit$na.action <- attr(mf, "na.action")
-  xlevels <- .getXlevels(mt, mf)
-  fit$call <- call
-  fit$formula <- formula
-  fit$terms<-mt
-				   
-
+		fit <- eval(call("CBPS.fit", X = X, treat = Y, ATT=ATT, 
+				    intercept = attr(mt, "intercept") > 0L, method=method, iterations=iterations, standardize = standardize))	
+			
+		fit$model <- mf
+		fit$na.action <- attr(mf, "na.action")
+		xlevels <- .getXlevels(mt, mf)
+		fit$call <- call
+		fit$formula <- formula
+		fit$terms<-mt
 	}
 	
 	if(type=="MSM")	 {
-	all.1<-sapply(formula[[1]],model.frame)
-	names.X<-NULL
-	for(i in 1:dim(all.1)[2]) {
-		names.X<-c(names.X,paste("Intercept.",i,sep=""))
-		for(j in 1:dim(all.1[2,i]$X1)[2]){
-			 name.temp<-paste("X.",j,".",i,sep="")
-			names.X<-c(names.X,name.temp)
-		}
-		}
-	treat.all<-unlist(all.1[1,])
-	X.all<-NULL
-	for(i in 1:dim(all.1)[2])
-		X.all<-rbind(X.all,as.matrix(all.1[2,i][[1]]))
-	X.all<-cbind(1,X.all[,apply(X.all,2,sd)>0])
-		time.all<-rep(1:dim(all.1)[2],each=length(unlist(all.1[1,1])))
-	fit <- eval(call("CBMSM.fit", X = X.all, treat = treat.all, time=time.all, method=method))
-	class(fit$coefficients)<-"coefficients"
-	names(fit$coefficients)<-names.X
-	fit$call<-formula
-					}
+		formulas<-eval(mf[[2]],parent.frame())[[1]]
+		X.all<-NULL
+		treat.all<-NULL
+		names.X<-NULL
+		names.Y<-array()
 
-	if(type=="MultiBin")	 {
-      	all.1<-sapply(formula[[1]],model.frame)
-	names.X<-NULL
-	for(i in 1:dim(all.1)[2]) {
-		names.X<-c(names.X,paste("Intercept.",i,sep=""))
-		for(j in 1:dim(all.1[2,i]$X1)[2]){
-			 name.temp<-paste("X.",j,".",i,sep="")
-			names.X<-c(names.X,name.temp)
+		for (i in 1:length(formulas))
+		{
+			mf[[2]]<-formulas[[i]]
+			temp.mf<-eval(mf, parent.frame())
+			temp.mt<-attr(temp.mf, "terms")
+			Y <- model.response(temp.mf, "any")
+			if (length(dim(Y)) == 1L) {
+				nm <- rownames(Y)
+				dim(Y) <- NULL
+				if (!is.null(nm)) 
+					names(Y) <- nm
+			}
+			treat.all<-c(treat.all,Y)
+
+			
+			X <- if (!is.empty.model(temp.mt)) model.matrix(temp.mt, temp.mf)
+			else matrix(, NROW(Y), 0L)
+			names.X<-c("Intercept",colnames(X)[-1])
+			names.Y[i]<-i
+			
+			X.all<-rbind(X.all,X)
 		}
+		time.all<-rep(1:length(formulas),each=length(treat.all)/length(formulas))
+		fit <- eval(call("CBMSM.fit", X = X.all, treat = treat.all, time=time.all, method=method, standardize = standardize))
+		class(fit$coefficients)<-"coefficients"
+		rownames(fit$coefficients)<-names.X
+		colnames(fit$coefficients)<-names.Y
+		fit$call<-formula
+		fit
 		}
-	treat.all<-unlist(all.1[1,])
-	X.all<-NULL
-	for(i in 1:dim(all.1)[2])
-		X.all<-rbind(X.all,as.matrix(all.1[2,i][[1]]))
-	X.all<-cbind(1,X.all[,apply(X.all,2,sd)>0])
-		time.all<-rep(1:dim(all.1)[2],each=length(unlist(all.1[1,1])))
-        fit <- eval(call("CBMSM.fit", X = X.all, treat = treat.all, time=time.all, method=method, MultiBin.fit = TRUE))
-	class(fit$coefficients)<-"coefficients"
-	names(fit$coefficients)<-names.X
-	fit$call<-formula
+
+	if(type=="MultiBin"){
+		formulas<-eval(mf[[2]],parent.frame())[[1]]
+		X.all<-NULL
+		treat.all<-NULL
+		names.X<-NULL
+		names.Y<-array()
+
+		for (i in 1:length(formulas))
+		{
+			mf[[2]]<-formulas[[i]]
+			temp.mf<-eval(mf, parent.frame())
+			temp.mt<-attr(temp.mf, "terms")
+			Y <- model.response(temp.mf, "any")
+			if (length(dim(Y)) == 1L) {
+				nm <- rownames(Y)
+				dim(Y) <- NULL
+				if (!is.null(nm)) 
+					names(Y) <- nm
+			}
+			treat.all<-c(treat.all,Y)
+			
+
+			
+			X <- if (!is.empty.model(temp.mt)) model.matrix(temp.mt, temp.mf)
+			else matrix(, NROW(Y), 0L)
+			X<-cbind(1,X[,apply(X,2,sd)>0])
+			
+			names.X<-c("Intercept",colnames(X)[-1])
+			names.Y[i]<-levels(as.factor(Y))[1]
+			
+			X.all<-rbind(X.all,X)
+		}
+		time.all<-rep(1:length(formulas),each=length(treat.all)/length(formulas))
+		fit <- eval(call("CBMSM.fit", X = X.all, treat = treat.all, time=time.all, method=method, MultiBin.fit = TRUE, standardize = standardize))
+		class(fit$coefficients)<-"coefficients"
+		rownames(fit$coefficients)<-names.X
+		colnames(fit$coefficients)<-names.Y
+		fit$call<-formula
+		fit
     }    
     fit
 }
 
-CBPS.fit<-function(treat, X, ATT, X.bal=X, method, iterations, ...){
+CBPS.fit<-function(treat, X, ATT, X.bal=X, method, iterations, standardize, ...){
 	k=0
 	if(method=="over") bal.only=FALSE
 	if(method=="exact") bal.only=TRUE
@@ -102,11 +133,11 @@ CBPS.fit<-function(treat, X, ATT, X.bal=X, method, iterations, ...){
   X.orig<-X
   format.bal<-F
   if(sum(dim(X.bal)[2]==dim(X)[2])) format.bal<-T
-  x.sd<-apply(X[,-1],2,sd)
+  x.sd<-apply(as.matrix(X[,-1]),2,sd)
   Dx.inv<-diag(c(1,x.sd))
   diag(Dx.inv)<-1
-  x.mean<-apply(X[,-1],2,mean)
-  X[,-1]<-apply(X[,-1],2,FUN=function(x) (x-mean(x))/sd(x))
+  x.mean<-apply(as.matrix(X[,-1]),2,mean)
+  X[,-1]<-apply(as.matrix(X[,-1]),2,FUN=function(x) (x-mean(x))/sd(x))
   if(k==0) k<-sum(diag(t(X)%*%X%*%ginv(t(X)%*%X)))
   k<-floor(k+.1)
   svd1<-svd(X)
@@ -119,17 +150,17 @@ CBPS.fit<-function(treat, X, ATT, X.bal=X, method, iterations, ...){
 
   if (no.treats == 2)
   {
- 	output<-CBPS.2Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations,ATT)
+ 	output<-CBPS.2Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ATT, standardize = standardize)
   }
   
   if (no.treats == 3)
   {
-	output<-CBPS.3Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations)
+	output<-CBPS.3Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize)
   }
   
   if (no.treats == 4)
   {
-	output<-CBPS.4Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations)
+	output<-CBPS.4Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize)
   }
 
   if (no.treats > 4)
@@ -292,7 +323,7 @@ summary.CBMSM<-summary.CBMB<-function(object,...){
 	  rnames<-array()
 	  for (i in 1:ncol(coef(object)))
 	  {
-		rnames[((i-1)*nrow(coef(object))+1):(i*nrow(coef(object)))]<-paste0(levels(as.factor(object$y))[i],": ",rownames(coef(object)))
+		rnames[((i-1)*nrow(coef(object))+1):(i*nrow(coef(object)))]<-paste0(i,": ",rownames(coef(object)))
 	  }
 	  rownames(coef.table)<-rnames
   }
@@ -341,7 +372,7 @@ print.CBMSM<-print.CBMB<-function(x,...){
 	  rnames<-array()
 	  for (i in 1:ncol(coef(x)))
 	  {
-		rnames[((i-1)*nrow(coef(x))+1):(i*nrow(coef(x)))]<-paste0(levels(as.factor(x$y))[i],": ",rownames(coef(x)))
+		rnames[((i-1)*nrow(coef(x))+1):(i*nrow(coef(x)))]<-paste0(i,": ",rownames(coef(x)))
 	  }
 	  rownames(coef.table)<-rnames
   }
@@ -638,9 +669,9 @@ balance.CBMB<-function(object, stabilized = TRUE, ...)
 		cnames[2*i]<-paste0(treat.names[i],".std.mean")
 	}
 	colnames(bal)<-cnames
-	rownames(bal)<-colnames(X)[-1]
+	rownames(bal)<-colnames(object$x)[-1]
 	colnames(baseline)<-cnames
-	rownames(baseline)<-colnames(X)[-1]
+	rownames(baseline)<-colnames(object$x)[-1]
 	out<-list(balanced=bal,original=baseline)
 	out
 }
@@ -692,9 +723,9 @@ balance.CBMSM<-function(object, stabilized = TRUE, ...)
 			cnames[2*i]<-paste0(treat.names[i],".std.mean")
 		}
 		colnames(bal)<-cnames
-		rownames(bal)<-colnames(this.X)[-1]
+		rownames(bal)<-colnames(object$x)[-1]
 		colnames(baseline)<-cnames
-		rownames(baseline)<-colnames(this.X)[-1]
+		rownames(baseline)<-colnames(object$x)[-1]
 		out[[k]]<-list(balanced=bal,original=baseline)
 	}
 	out

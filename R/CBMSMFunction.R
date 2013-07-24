@@ -1,19 +1,26 @@
-
+library(numDeriv)
 library(MASS)
 
 
 ########################
 ###Calls loss function
 ########################
-CBMSM.fit<-function(treat,X, time,method, MultiBin.fit=FALSE, ...){
-
+CBMSM.fit<-function(treat,X, time,method, MultiBin.fit=FALSE, standardize, ...){
 	if(method=="over") bal.only=FALSE
 	if(method=="exact") bal.only=TRUE
+	
+	time0=time
+	n.t<-sum(time==time[1])
+
+	for (i in 1:length(unique(time)))
+	{
+		treat.names<-levels(as.factor(treat[(i-1)*(n.t)+1:n.t]))
+		treat[(i-1)*n.t+1:n.t]<-sapply(as.factor(treat[(i-1)*(n.t)+1:n.t]), function(x) ifelse(x == treat.names[1], 1, 0))
+	}
 
 	X0<-X
 
-	time0=time
-	n.t<-sum(time==time[1])
+
 	X<-X[,apply(X,2,sd)>0]
 	X<-cbind(1,X)
 	svd1<-x.sd<-NULL
@@ -79,7 +86,7 @@ CBMSM.fit<-function(treat,X, time,method, MultiBin.fit=FALSE, ...){
 		}
 		
 		#wts.glm<-make.wts(betas.glm,X,treat)
-		w.opt<-make.wts(opt1$par,X,treat,probs.uncond,time0,MultiBin.fit)
+		w.opt<-make.wts(opt1$par,X,treat,probs.uncond,time0,MultiBin.fit,standardize)
 		probs.opt<-make.probs(opt1$par,X,treat,time=time0)
 		#w.each<-matrix(treat/probs.opt+(1-treat)/(1-probs.opt),nrow=n.t,byrow=FALSE)
 		#w.opt[["stabilized"]]<-apply(w.each,1,prod)*probs.uncond[1:n.t]
@@ -134,6 +141,7 @@ CBMSM.fit<-function(treat,X, time,method, MultiBin.fit=FALSE, ...){
 			beta.opt<-svd.v.X%*%ginv(diag(svd1$d))%*%opt1$par
 	beta.opt<-beta.opt/x.sd
 	beta.opt[is.na(beta.opt)]<-0
+	beta.opt<-matrix(beta.opt,ncol=length(unique(time)))
 		 ##Output from CBPS object
 		 #output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
          #    "deviance"=deviance,"weights"=w.opt,
@@ -158,7 +166,7 @@ CBMSM.fit<-function(treat,X, time,method, MultiBin.fit=FALSE, ...){
 ###Makes weights and probabilities
 ########################
 
-make.wts<-function(betas,X,treat,probs.uncond,time,MultiBin.fit){
+make.wts<-function(betas,X,treat,probs.uncond,time,MultiBin.fit,standardize){
 treat.use<-betas.use<-thetas.use<-NULL
 for(i in sort(unique(time))){
 thetas.use<-cbind(thetas.use,X[time==i,]%*%betas[1:dim(X)[2]+(i-1)*dim(X)[2] ])
@@ -175,6 +183,39 @@ probs.obs<-treat.use/probs.use+(1-treat.use)/(1-probs.use)#+(treat.use-probs.use
 	wts[["stabilized"]]<-apply(probs.obs,1,prod)*probs.uncond[time==1]
 	wts[["unstabilized"]]<-apply(probs.obs,1,prod)
 	wts[["unconditional"]]<-probs.uncond[time==1]
+	if (standardize)
+	{
+		which.rows<-function(mat,r)
+		{
+			ctr<-1
+			out<-array()
+			for (i in 1:nrow(mat))
+			{
+				equal<-TRUE
+				for (j in 1:ncol(mat))
+				{
+					if (mat[i,j] != r[j]) equal <- FALSE
+				}
+				if (equal) 
+				{
+					out[ctr]<-i
+					ctr<-ctr+1
+				}
+			}
+			out
+		}
+		for (i in 1:length(wts[["stabilized"]]))
+		{
+			norm.stabilized<-sum((apply(probs.obs,1,prod)*probs.uncond[time==1])[which.rows(treat.use,treat.use[i,])])
+			wts[["stabilized"]][i]<-wts[["stabilized"]][i]/norm.stabilized
+			
+			norm.unstabilized<-sum(apply(probs.obs,1,prod)[which.rows(treat.use,treat.use[i,])])
+			wts[["unstabilized"]][i]<-wts[["unstabilized"]][i]/norm.unstabilized
+			
+			norm.unconditional<-sum(probs.uncond[time==1][which.rows(treat.use,treat.use[i,])])
+			wts[["unconditional"]][i]<-wts[["unconditional"]][i]/norm.unconditional
+		}
+	}
 	wts
 }
 
