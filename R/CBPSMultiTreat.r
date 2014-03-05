@@ -1,7 +1,7 @@
-CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, ...)
+CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, twostep, ...)
 {
 	probs.min<-1e-6
-	if (is.null(iterations)) iterations<-10000
+	if (is.null(iterations)) iterations<-1000
 	
 	no.treats<-length(levels(as.factor(treat)))
 	treat.names<-levels(as.factor(treat))
@@ -10,7 +10,7 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	T3<-as.numeric(treat==treat.names[3])
 	  
 	##The gmm objective function--given a guess of beta, constructs the GMM J statistic.
-	  gmm.func<-function(beta.curr,X.gmm=X){
+	  gmm.func<-function(beta.curr,X.gmm=X,invV=NULL){
 		##Designate a few objects in the function.
 		beta.curr<-matrix(beta.curr,k,no.treats-1)
 		X<-as.matrix(X.gmm)
@@ -44,33 +44,39 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 				1/sum(n)*t(X)%*%(T3-probs.curr[,3]),
 				w.curr.del)
 
-		##Generate the covariance matrix used in the GMM estimate.
-		##Was for the initial version that calculates the analytic variances.		
-		X.1.1<-X*(probs.curr[,2]*(1-probs.curr[,2]))
-		X.1.2<-X*(-probs.curr[,2]*probs.curr[,3])
-		X.1.3<-X*-1
-		X.1.4<-X*0
-		X.1.5<-X*1
-		X.2.2<-X*(probs.curr[,3]*(1-probs.curr[,3]))
-		X.2.3<-X*0
-		X.2.4<-X*-1
-		X.2.5<-X*-1
-		X.3.3<-X*(probs.curr[,1]^-1+probs.curr[,2]^-1)
-		X.3.4<-X*probs.curr[,1]^-1
-		X.3.5<-X*-probs.curr[,2]^-1
-		X.4.4<-X*(probs.curr[,1]^-1+probs.curr[,3]^-1)
-		X.4.5<-X*probs.curr[,3]^-1
-		X.5.5<-X*(probs.curr[,2]^-1+probs.curr[,3]^-1)
+
+		if(is.null(invV))
+		{
+			##Generate the covariance matrix used in the GMM estimate.
+			##Was for the initial version that calculates the analytic variances.		
+			X.1.1<-X*(probs.curr[,2]*(1-probs.curr[,2]))
+			X.1.2<-X*(-probs.curr[,2]*probs.curr[,3])
+			X.1.3<-X*-1
+			X.1.4<-X*0
+			X.1.5<-X*1
+			X.2.2<-X*(probs.curr[,3]*(1-probs.curr[,3]))
+			X.2.3<-X*0
+			X.2.4<-X*-1
+			X.2.5<-X*-1
+			X.3.3<-X*(probs.curr[,1]^-1+probs.curr[,2]^-1)
+			X.3.4<-X*probs.curr[,1]^-1
+			X.3.5<-X*-probs.curr[,2]^-1
+			X.4.4<-X*(probs.curr[,1]^-1+probs.curr[,3]^-1)
+			X.4.5<-X*probs.curr[,3]^-1
+			X.5.5<-X*(probs.curr[,2]^-1+probs.curr[,3]^-1)
 		
-		V<-1/sum(n)*rbind(cbind(t(X.1.1)%*%X,t(X.1.2)%*%X,t(X.1.3)%*%X,t(X.1.4)%*%X,t(X.1.5)%*%X),
-						  cbind(t(X.1.2)%*%X,t(X.2.2)%*%X,t(X.2.3)%*%X,t(X.2.4)%*%X,t(X.2.5)%*%X),
-						  cbind(t(X.1.3)%*%X,t(X.2.3)%*%X,t(X.3.3)%*%X,t(X.3.4)%*%X,t(X.3.5)%*%X),
-						  cbind(t(X.1.4)%*%X,t(X.2.4)%*%X,t(X.3.4)%*%X,t(X.4.4)%*%X,t(X.4.5)%*%X),
-						  cbind(t(X.1.5)%*%X,t(X.2.5)%*%X,t(X.3.5)%*%X,t(X.4.4)%*%X,t(X.5.5)%*%X))
+			V<-1/sum(n)*rbind(cbind(t(X.1.1)%*%X,t(X.1.2)%*%X,t(X.1.3)%*%X,t(X.1.4)%*%X,t(X.1.5)%*%X),
+							  cbind(t(X.1.2)%*%X,t(X.2.2)%*%X,t(X.2.3)%*%X,t(X.2.4)%*%X,t(X.2.5)%*%X),
+							  cbind(t(X.1.3)%*%X,t(X.2.3)%*%X,t(X.3.3)%*%X,t(X.3.4)%*%X,t(X.3.5)%*%X),
+							  cbind(t(X.1.4)%*%X,t(X.2.4)%*%X,t(X.3.4)%*%X,t(X.4.4)%*%X,t(X.4.5)%*%X),
+							  cbind(t(X.1.5)%*%X,t(X.2.5)%*%X,t(X.3.5)%*%X,t(X.4.4)%*%X,t(X.5.5)%*%X))
+							  
+			invV<-ginv(V)
+		}
 		
 		##Calculate the GMM loss.
-		loss1<-as.vector(t(gbar)%*%ginv(V)%*%(gbar))      
-		out1<-list("loss"=max(loss1*sum(n),loss1*sum(n)), "V"=V)
+		loss1<-as.vector(t(gbar)%*%invV%*%(gbar))      
+		out1<-list("loss"=max(loss1*sum(n),loss1*sum(n)), "invV"=invV)
 		out1
 	  }
 	  gmm.loss<-function(x,...) gmm.func(x,...)$loss
@@ -96,10 +102,102 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		loss1<-sum(diag(abs(t(w.curr)%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr))))
 		loss1
 	  }
+	  
+	  gmm.gradient<-function(beta.curr, X.gmm=X, invV)
+	  {
+		##Designate a few objects in the function.
+		beta.curr<-matrix(beta.curr,k,no.treats-1)
+		X<-as.matrix(X.gmm)
+		
+		##Designate sample size, number of treated and control observations,
+		##theta.curr, which are used to generate probabilities.
+		##Trim probabilities, and generate weights.
+		n<-c(sum(T1), sum(T2), sum(T3))
+		theta.curr<-X%*%beta.curr
+		baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
+		probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob)
+		probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
+		probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
+		probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
+		probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
+		probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
+		probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
+
+		w.curr<-cbind(T1/probs.curr[,1] - T2/probs.curr[,2],
+					  T1/probs.curr[,1] - T3/probs.curr[,3],
+					  T2/probs.curr[,2] - T3/probs.curr[,3])
+		  
+	  
+		##Generate the vector of mean imbalance by weights.
+		w.curr.del<-1/sum(n)*t(X)%*%w.curr
+		w.curr.del<-as.matrix(w.curr.del)
+		w.curr<-as.matrix(w.curr)
+
+		##Generate g-bar, as in the paper.
+		gbar<-c(1/sum(n)*t(X)%*%(T2-probs.curr[,2]), 
+				1/sum(n)*t(X)%*%(T3-probs.curr[,3]),
+				w.curr.del)
+				
+		dgbar<-rbind(cbind(1/sum(n)*t(apply(t(X),1,function(x) -x*probs.curr[,2]*(1-probs.curr[,2])))%*%X,
+							1/sum(n)*t(apply(t(X),1,function(x) x*probs.curr[,2]*probs.curr[,3]))%*%X,
+							1/sum(n)*t(apply(t(X),1,function(x) x*(T1*probs.curr[,2]/probs.curr[,1] + T2*(1-probs.curr[,2])/probs.curr[,2])))%*%X,
+							1/sum(n)*t(apply(t(X),1,function(x) x*(T1*probs.curr[,2]/probs.curr[,1] - T3*probs.curr[,2]/probs.curr[,3])))%*%X,
+							1/sum(n)*t(apply(t(X),1,function(x) x*(-T2*(1-probs.curr[,2])/probs.curr[,2] - T3*probs.curr[,2]/probs.curr[,3])))%*%X),
+					cbind(1/sum(n)*t(apply(t(X),1,function(x) x*probs.curr[,2]*probs.curr[,3]))%*%X,
+							1/sum(n)*t(apply(t(X),1,function(x) -x*probs.curr[,3]*(1-probs.curr[,3])))%*%X,
+							1/sum(n)*t(apply(t(X),1,function(x) x*(T1*probs.curr[,3]/probs.curr[,1] - T2*probs.curr[,3]/probs.curr[,2])))%*%X,
+							1/sum(n)*t(apply(t(X),1,function(x) x*(T1*probs.curr[,3]/probs.curr[,1] + T3*(1-probs.curr[,3])/probs.curr[,3])))%*%X,
+							1/sum(n)*t(apply(t(X),1,function(x) x*(T2*probs.curr[,3]/probs.curr[,2] + T3*(1-probs.curr[,3])/probs.curr[,3])))%*%X))
+		
+		out<-2*sum(n)*dgbar%*%invV%*%gbar
+		out
+	  }
+	  
+	  bal.gradient<-function(beta.curr)
+	  {
+		beta.curr<-matrix(beta.curr,k,no.treats-1)
+		theta.curr<-X%*%beta.curr
+		baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
+		probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob)
+		probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
+		probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
+		probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
+		probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
+		probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
+		probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
+
+		w.curr<-cbind(T1/probs.curr[,1] - T2/probs.curr[,2],
+					  T1/probs.curr[,1] - T3/probs.curr[,3],
+					  T2/probs.curr[,2] - T3/probs.curr[,3])
+					  
+		dw.beta1<-cbind(t(apply(t(X),1,function(x) x*(T1*probs.curr[,2]/probs.curr[,1] + T2*(1-probs.curr[,2])/probs.curr[,2]))),
+						t(apply(t(X),1,function(x) x*(T1*probs.curr[,2]/probs.curr[,1] - T3*probs.curr[,2]/probs.curr[,3]))),
+						t(apply(t(X),1,function(x) x*(-T2*(1-probs.curr[,2])/probs.curr[,2] - T3*probs.curr[,2]/probs.curr[,3]))))
+		dw.beta2<-cbind(t(apply(t(X),1,function(x) x*(T1*probs.curr[,3]/probs.curr[,1] - T2*probs.curr[,3]/probs.curr[,2]))),
+						t(apply(t(X),1,function(x) x*(T1*probs.curr[,3]/probs.curr[,1] + T3*(1-probs.curr[,3])/probs.curr[,3]))),
+						t(apply(t(X),1,function(x) x*(T2*probs.curr[,3]/probs.curr[,2] + T3*(1-probs.curr[,3])/probs.curr[,3]))))
+		##Generate mean imbalance.
+		loss1<-diag(t(w.curr)%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr))
+		out.1<-sapply(2*dw.beta1[,1:n]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,1]), 
+				function(x) ifelse((x > 0 & loss1[1] > 0) | (x < 0 & loss1[1] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta1[,(n+1):(2*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,2]),
+				function(x) ifelse((x > 0 & loss1[2] > 0) | (x < 0 & loss1[2] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta1[,(2*n+1):(3*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,3]),
+				function(x) ifelse((x > 0 & loss1[3] > 0) | (x < 0 & loss1[3] < 0),abs(x),-abs(x)))
+		out.2<-sapply(2*dw.beta2[,1:n]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,1]), 
+				function(x) ifelse((x > 0 & loss1[1] > 0) | (x < 0 & loss1[1] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta2[,(n+1):(2*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,2]),
+				function(x) ifelse((x > 0 & loss1[2] > 0) | (x < 0 & loss1[2] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta2[,(2*n+1):(3*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,3]),
+				function(x) ifelse((x > 0 & loss1[3] > 0) | (x < 0 & loss1[3] < 0),abs(x),-abs(x)))
+		out<-sum(n)*c(out.1, out.2)
+		out
+	  }
+	  
 	  n<-length(treat)
 	  n.t<-c(sum(T1),sum(T2),sum(T3))
 	  x.orig<-x<-cbind(as.matrix(X))
-  
+	    
 	##Run multionmial logit
 	  dat.dummy<-data.frame(treat=treat,X)
 	  #Need to generalize for different dimensioned X's
@@ -129,32 +227,50 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	  ##Generate estimates for balance and CBPSE
 	  gmm.init<-beta.curr
 	  
+	if (twostep)
+	{
+	  opt.bal<-optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="BFGS", gr = bal.gradient, hessian=TRUE)
+	}
+	else
+	{
 	  opt.bal<-tryCatch({
 							optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
 						},
 						error = function(err)
 						{
 							return(optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
-						})
+						})	  
+	}
 	  beta.bal<-opt.bal$par
 	  if(bal.only) opt1<-opt.bal 
 	  
 	  if(!bal.only)
 	  {
-	  gmm.glm.init<-tryCatch({
-								optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
-							},
-							error = function(err)
-							{
-								return(optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
-							})
-	  gmm.bal.init<-tryCatch({
-								optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
-							},
-							error = function(err)
-							{
-								return(optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
-							})
+		gmm.init.out<-gmm.func(gmm.init)
+		bal.init.out<-gmm.func(beta.bal)
+		if (twostep)
+		{
+			this.invV <- gmm.init.out$invV
+			gmm.glm.init<-optim(mcoef, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE, gr = gmm.gradient, invV = this.invV)
+			gmm.bal.init<-optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE, gr = gmm.gradient, invV = this.invV)
+		}
+		else
+		{
+			gmm.glm.init<-tryCatch({
+									optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
+								},
+								error = function(err)
+								{
+									return(optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
+								})
+			gmm.bal.init<-tryCatch({
+									optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
+								},
+								error = function(err)
+								{
+									return(optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
+								})
+		}
 		
 		if(gmm.glm.init$val<gmm.bal.init$val) opt1<-gmm.glm.init else opt1<-gmm.bal.init
 		}
@@ -171,7 +287,7 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		probs.opt[,3]<-pmin(1-probs.min,probs.opt[,3])
 		probs.opt[,3]<-pmax(probs.min,probs.opt[,3])
 			  
-	  J.opt<-gmm.func(beta.opt)$loss
+	  J.opt<-ifelse(twostep, gmm.func(beta.opt, invV = this.invV)$loss, gmm.func(beta.opt)$loss)
 	  
 	  if ((J.opt > gmm.loss(mcoef)) & (bal.loss(beta.opt) > bal.loss(mcoef)))
 		{	  
@@ -193,16 +309,13 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	  norm1<-norm2<-norm3<-1
 	  if (standardize)
 	  {
-		  norm1<-sum(1/probs.opt[which(T1==1),1])
-		  norm2<-sum(1/probs.opt[which(T2==1),2])
-		  norm3<-sum(1/probs.opt[which(T3==1),3])
+		  norm1<-sum(T1/probs.opt[,1])
+		  norm2<-sum(T2/probs.opt[,2])
+		  norm3<-sum(T3/probs.opt[,3])
 	  }
-	  w<-array(dim=n)
-	  w[which(T1==1)]<-1/probs.opt[which(T1==1),1]/norm1
-	  w[which(T2==1)]<-1/probs.opt[which(T2==1),2]/norm2
-	  w[which(T3==1)]<-1/probs.opt[which(T3==1),3]/norm3
+	  w<-T1/probs.opt[,1]/norm1 + T2/probs.opt[,2]/norm2 + T3/probs.opt[,3]/norm3
 	  
-	  W<-ginv(gmm.func(beta.opt)$V)
+	  W<-gmm.func(beta.opt)$invV
 	  XG.1.1<-t(-X*probs.opt[,2]*(1-probs.opt[,2]))%*%X
 	  XG.1.2<-t(X*probs.opt[,2]*probs.opt[,3])%*%X
 	  XG.1.3<-t(X*(T1*probs.opt[,2]/probs.opt[,1] + T2*(1-probs.opt[,2])/probs.opt[,2]))%*%X
@@ -231,13 +344,15 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
 					 "deviance"=deviance,"weights"=w,
 					 "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
-					 "data"=data, "J"=J.opt,"df"=k,"var"=vcov)
+					 "data"=data, "J"=J.opt,"df"=k,"var"=vcov, "mle.bal"=bal.loss(mcoef), "bal"=bal.loss(beta.opt), 
+					 "mle.J"=ifelse(twostep, gmm.func(mcoef, invV = this.invV)$loss, gmm.loss(mcoef)))
   
 		class(output)<- c("CBPS")
+				
 		output
 }
 
-CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, ...)
+CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, twostep, ...)
 {
 	probs.min<-1e-6
 	if (is.null(iterations)) iterations<-10000
@@ -250,8 +365,113 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	T4<-as.numeric(treat==treat.names[4])
 	  
 	##The gmm objective function--given a guess of beta, constructs the GMM J statistic.
-	  gmm.func<-function(beta.curr,X.gmm=X){
+	  gmm.func<-function(beta.curr,X.gmm=X,invV=NULL){
 		##Designate a few objects in the function.
+		beta.curr<-matrix(beta.curr,k,no.treats-1)
+		X<-as.matrix(X.gmm)
+		
+		##Designate sample size, number of treated and control observations,
+		##theta.curr, which are used to generate probabilities.
+		##Trim probabilities, and generate weights.
+		n<-c(sum(T1), sum(T2), sum(T3), sum(T4))
+		theta.curr<-X%*%beta.curr
+		baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
+		probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob, exp(theta.curr[,3])*baseline.prob)
+		probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
+		probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
+		probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
+		probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
+		probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
+		probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
+		probs.curr[,4]<-pmin(1-probs.min,probs.curr[,4])
+		probs.curr[,4]<-pmax(probs.min,probs.curr[,4])
+
+		w.curr<-cbind(T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] - T4/probs.curr[,4],
+					  T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4],
+					  -T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4])
+					  #++++ - 1
+		  
+	  
+		##Generate the vector of mean imbalance by weights.
+		w.curr.del<-1/sum(n)*t(X)%*%w.curr
+		w.curr.del<-as.matrix(w.curr.del)
+		w.curr<-as.matrix(w.curr)
+
+		##Generate g-bar, as in the paper.
+		gbar<-c(1/sum(n)*t(X)%*%(T2-probs.curr[,2]), 
+				1/sum(n)*t(X)%*%(T3-probs.curr[,3]),
+				1/sum(n)*t(X)%*%(T4-probs.curr[,4]),
+				w.curr.del)
+
+				
+		if(is.null(invV))
+		{
+			##Generate the covariance matrix used in the GMM estimate.
+			##Was for the initial version that calculates the analytic variances.		
+			X.1.1<-X*(probs.curr[,2]*(1-probs.curr[,2]))
+			X.1.2<-X*(-probs.curr[,2]*probs.curr[,3])
+			X.1.3<-X*(-probs.curr[,2]*probs.curr[,4])
+			X.1.4<-X
+			X.1.5<-X*(-1)
+			X.1.6<-X
+			X.2.2<-X*(probs.curr[,3]*(1-probs.curr[,3]))
+			X.2.3<-X*(-probs.curr[,3]*probs.curr[,4])
+			X.2.4<-X*(-1)
+			X.2.5<-X*(-1)
+			X.2.6<-X*(-1)
+			X.3.3<-X*(probs.curr[,4]*(1-probs.curr[,4]))
+			X.3.4<-X*(-1)
+			X.3.5<-X
+			X.3.6<-X
+			X.4.4<-X*(probs.curr[,1]^-1+probs.curr[,2]^-1+probs.curr[,3]^-1+probs.curr[,4]^-1)
+			X.4.5<-X*(probs.curr[,1]^-1-probs.curr[,2]^-1+probs.curr[,3]^-1-probs.curr[,4]^-1)
+			X.4.6<-X*(-probs.curr[,1]^-1+probs.curr[,2]^-1+probs.curr[,3]^-1-probs.curr[,4]^-1)
+			X.5.5<-X.4.4
+			X.5.6<-X*(-probs.curr[,1]^-1-probs.curr[,2]^-1+probs.curr[,3]^-1+probs.curr[,4]^-1)
+			X.6.6<-X.4.4
+			
+			V<-1/sum(n)*rbind(cbind(t(X.1.1)%*%X,t(X.1.2)%*%X,t(X.1.3)%*%X,t(X.1.4)%*%X,t(X.1.5)%*%X,t(X.1.6)%*%X),
+							  cbind(t(X.1.2)%*%X,t(X.2.2)%*%X,t(X.2.3)%*%X,t(X.2.4)%*%X,t(X.2.5)%*%X,t(X.2.6)%*%X),
+							  cbind(t(X.1.3)%*%X,t(X.2.3)%*%X,t(X.3.3)%*%X,t(X.3.4)%*%X,t(X.3.5)%*%X,t(X.3.6)%*%X),
+							  cbind(t(X.1.4)%*%X,t(X.2.4)%*%X,t(X.3.4)%*%X,t(X.4.4)%*%X,t(X.4.5)%*%X,t(X.4.6)%*%X),
+							  cbind(t(X.1.5)%*%X,t(X.2.5)%*%X,t(X.3.5)%*%X,t(X.4.5)%*%X,t(X.5.5)%*%X,t(X.5.6)%*%X),
+							  cbind(t(X.1.6)%*%X,t(X.2.6)%*%X,t(X.3.6)%*%X,t(X.4.6)%*%X,t(X.5.6)%*%X,t(X.6.6)%*%X))
+			invV<-ginv(V)
+		}
+		##Calculate the GMM loss.
+		loss1<-as.vector(t(gbar)%*%invV%*%(gbar))      
+		out1<-list("loss"=max(loss1*sum(n),loss1*sum(n)), "invV"=invV)
+		out1
+	  }
+	  gmm.loss<-function(x,...) gmm.func(x,...)$loss
+		
+	  ##Loss function for balance constraints, returns the squared imbalance along each dimension.
+	  bal.loss<-function(beta.curr){
+		beta.curr<-matrix(beta.curr,k,no.treats-1)
+		theta.curr<-X%*%beta.curr
+		baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
+		probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob, exp(theta.curr[,3]*baseline.prob))
+		probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
+		probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
+		probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
+		probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
+		probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
+		probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
+		probs.curr[,4]<-pmin(1-probs.min,probs.curr[,4])
+		probs.curr[,4]<-pmax(probs.min,probs.curr[,4])
+
+		w.curr<-cbind(T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] - T4/probs.curr[,4],
+					  T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4],
+					  -T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4])
+					  
+		##Generate mean imbalance.
+		loss1<-sum(diag(abs(t(w.curr)%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr))))
+		loss1
+	  }
+	  
+	  gmm.gradient<-function(beta.curr, X.gmm=X, invV)
+	  {
+	  	##Designate a few objects in the function.
 		beta.curr<-matrix(beta.curr,k,no.treats-1)
 		X<-as.matrix(X.gmm)
 		
@@ -287,46 +507,35 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 				1/sum(n)*t(X)%*%(T4-probs.curr[,4]),
 				w.curr.del)
 
-		##Generate the covariance matrix used in the GMM estimate.
-		##Was for the initial version that calculates the analytic variances.		
-		X.1.1<-X*(probs.curr[,2]*(1-probs.curr[,2]))
-		X.1.2<-X*(-probs.curr[,2]*probs.curr[,3])
-		X.1.3<-X*(-probs.curr[,2]*probs.curr[,4])
-		X.1.4<-X
-		X.1.5<-X*(-1)
-		X.1.6<-X
-		X.2.2<-X*(probs.curr[,3]*(1-probs.curr[,3]))
-		X.2.3<-X*(-probs.curr[,3]*probs.curr[,4])
-		X.2.4<-X*(-1)
-		X.2.5<-X*(-1)
-		X.2.6<-X*(-1)
-		X.3.3<-X*(probs.curr[,4]*(1-probs.curr[,4]))
-		X.3.4<-X*(-1)
-		X.3.5<-X
-		X.3.6<-X
-		X.4.4<-X*(probs.curr[,1]^-1+probs.curr[,2]^-1+probs.curr[,3]^-1+probs.curr[,4]^-1)
-		X.4.5<-X*(probs.curr[,1]^-1-probs.curr[,2]^-1+probs.curr[,3]^-1-probs.curr[,4]^-1)
-		X.4.6<-X*(-probs.curr[,1]^-1+probs.curr[,2]^-1+probs.curr[,3]^-1-probs.curr[,4]^-1)
-		X.5.5<-X.4.4
-		X.5.6<-X*(-probs.curr[,1]^-1-probs.curr[,2]^-1+probs.curr[,3]^-1+probs.curr[,4]^-1)
-		X.6.6<-X.4.4
-		
-		V<-1/sum(n)*rbind(cbind(t(X.1.1)%*%X,t(X.1.2)%*%X,t(X.1.3)%*%X,t(X.1.4)%*%X,t(X.1.5)%*%X,t(X.1.6)%*%X),
-						  cbind(t(X.1.2)%*%X,t(X.2.2)%*%X,t(X.2.3)%*%X,t(X.2.4)%*%X,t(X.2.5)%*%X,t(X.2.6)%*%X),
-						  cbind(t(X.1.3)%*%X,t(X.2.3)%*%X,t(X.3.3)%*%X,t(X.3.4)%*%X,t(X.3.5)%*%X,t(X.3.6)%*%X),
-						  cbind(t(X.1.4)%*%X,t(X.2.4)%*%X,t(X.3.4)%*%X,t(X.4.4)%*%X,t(X.4.5)%*%X,t(X.4.6)%*%X),
-						  cbind(t(X.1.5)%*%X,t(X.2.5)%*%X,t(X.3.5)%*%X,t(X.4.5)%*%X,t(X.5.5)%*%X,t(X.5.6)%*%X),
-						  cbind(t(X.1.6)%*%X,t(X.2.6)%*%X,t(X.3.6)%*%X,t(X.4.6)%*%X,t(X.5.6)%*%X,t(X.6.6)%*%X))
-		
-		##Calculate the GMM loss.
-		loss1<-as.vector(t(gbar)%*%ginv(V)%*%(gbar))      
-		out1<-list("loss"=max(loss1*sum(n),loss1*sum(n)), "V"=V)
-		out1
+		# TYPO?  I have a double negative in there.
+		dgbar<-rbind(cbind(1/sum(n)*(t(apply(t(X),1,function(x) -x*probs.curr[,2]*(1-probs.curr[,2]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*probs.curr[,2]*probs.curr[,3])))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*probs.curr[,2]*probs.curr[,4])))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(T1*probs.curr[,2]/probs.curr[,1] - T2*(1 - probs.curr[,2])/probs.curr[,2] - T3*probs.curr[,2]/probs.curr[,3] - T4*probs.curr[,2]/probs.curr[,4]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(T1*probs.curr[,2]/probs.curr[,1] + T2*(1 - probs.curr[,2])/probs.curr[,2] - T3*probs.curr[,2]/probs.curr[,3] + T4*probs.curr[,2]/probs.curr[,4]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(-T1*probs.curr[,2]/probs.curr[,1] - T2*(1 - probs.curr[,2])/probs.curr[,2] - T3*probs.curr[,2]/probs.curr[,3] + T4*probs.curr[,2]/probs.curr[,4]))))%*%X
+							),
+					cbind(1/sum(n)*(t(apply(t(X),1,function(x) x*probs.curr[,2]*probs.curr[,3])))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) -x*probs.curr[,3]*(1-probs.curr[,3]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*probs.curr[,3]*probs.curr[,4])))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(T1*probs.curr[,3]/probs.curr[,1] + T2*probs.curr[,3]/probs.curr[,2] + T3*(1 - probs.curr[,3])/probs.curr[,3] - T4*probs.curr[,3]/probs.curr[,4]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(T1*probs.curr[,3]/probs.curr[,1] - T2*probs.curr[,3]/probs.curr[,2] + T3*(1 - probs.curr[,3])/probs.curr[,3] + T4*probs.curr[,3]/probs.curr[,4]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(-T1*probs.curr[,3]/probs.curr[,1] + T2*probs.curr[,3]/probs.curr[,2] + T3*(1 - probs.curr[,3])/probs.curr[,3] + T4*probs.curr[,3]/probs.curr[,4]))))%*%X
+							),
+					cbind(1/sum(n)*(t(apply(t(X),1,function(x) x*probs.curr[,2]*probs.curr[,4])))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*probs.curr[,3]*probs.curr[,4])))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) -x*probs.curr[,4]*(1-probs.curr[,4]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(T1*probs.curr[,4]/probs.curr[,1] + T2*probs.curr[,4]/probs.curr[,2] - T3*probs.curr[,4]/probs.curr[,3] + T4*(1 - probs.curr[,4])/probs.curr[,4]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(T1*probs.curr[,4]/probs.curr[,1] - T2*probs.curr[,4]/probs.curr[,2] - T3*probs.curr[,4]/probs.curr[,3] - T4*(1 - probs.curr[,4])/probs.curr[,4]))))%*%X,
+							1/sum(n)*(t(apply(t(X),1,function(x) x*(-T1*probs.curr[,4]/probs.curr[,1] + T2*probs.curr[,4]/probs.curr[,2] - T3*probs.curr[,4]/probs.curr[,3] - T4*(1 - probs.curr[,4])/probs.curr[,4]))))%*%X
+							))
+
+		out<-2*sum(n)*dgbar%*%invV%*%gbar
+		out
 	  }
-	  gmm.loss<-function(x,...) gmm.func(x,...)$loss
-		
-	  ##Loss function for balance constraints, returns the squared imbalance along each dimension.
-	  bal.loss<-function(beta.curr){
+	  
+	  bal.gradient<-function(beta.curr)
+	  {
 		beta.curr<-matrix(beta.curr,k,no.treats-1)
 		theta.curr<-X%*%beta.curr
 		baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
@@ -344,11 +553,42 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 					  T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4],
 					  -T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4])
 					  
-		X.2<-X
-		##Generate mean imbalance.
-		loss1<-sum(diag(abs(t(w.curr)%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr))))
-		loss1
+		dw.beta1<-cbind(t(apply(t(X),1,function(x) x*(T1*probs.curr[,2]/probs.curr[,1] - T2*(1 - probs.curr[,2])/probs.curr[,2] - T3*probs.curr[,2]/probs.curr[,3] - T4*probs.curr[,2]/probs.curr[,4]))),
+						t(apply(t(X),1,function(x) x*(T1*probs.curr[,2]/probs.curr[,1] + T2*(1 - probs.curr[,2])/probs.curr[,2] - T3*probs.curr[,2]/probs.curr[,3] + T4*probs.curr[,2]/probs.curr[,4]))),
+						t(apply(t(X),1,function(x) x*(-T1*probs.curr[,2]/probs.curr[,1] - T2*(1 - probs.curr[,2])/probs.curr[,2] - T3*probs.curr[,2]/probs.curr[,3] + T4*probs.curr[,2]/probs.curr[,4]))))
+
+		dw.beta2<-cbind(t(apply(t(X),1,function(x) x*(T1*probs.curr[,3]/probs.curr[,1] + T2*probs.curr[,3]/probs.curr[,2] + T3*(1 - probs.curr[,3])/probs.curr[,3] - T4*probs.curr[,3]/probs.curr[,4]))),
+						t(apply(t(X),1,function(x) x*(T1*probs.curr[,3]/probs.curr[,1] - T2*probs.curr[,3]/probs.curr[,2] + T3*(1 - probs.curr[,3])/probs.curr[,3] + T4*probs.curr[,3]/probs.curr[,4]))),
+						t(apply(t(X),1,function(x) x*(-T1*probs.curr[,3]/probs.curr[,1] + T2*probs.curr[,3]/probs.curr[,2] + T3*(1 - probs.curr[,3])/probs.curr[,3] + T4*probs.curr[,3]/probs.curr[,4]))))
+		
+		dw.beta3<-cbind(t(apply(t(X),1,function(x) x*(T1*probs.curr[,4]/probs.curr[,1] + T2*probs.curr[,4]/probs.curr[,2] - T3*probs.curr[,4]/probs.curr[,3] + T4*(1 - probs.curr[,4])/probs.curr[,4]))),
+						t(apply(t(X),1,function(x) x*(T1*probs.curr[,4]/probs.curr[,1] - T2*probs.curr[,4]/probs.curr[,2] - T3*probs.curr[,4]/probs.curr[,3] - T4*(1 - probs.curr[,4])/probs.curr[,4]))),
+						t(apply(t(X),1,function(x) x*(-T1*probs.curr[,4]/probs.curr[,1] + T2*probs.curr[,4]/probs.curr[,2] - T3*probs.curr[,4]/probs.curr[,3] - T4*(1 - probs.curr[,4])/probs.curr[,4]))))
+	  
+	    loss1<-diag(t(w.curr)%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr))
+		
+		out.1<-sapply(2*dw.beta1[,1:n]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,1]), 
+				function(x) ifelse((x > 0 & loss1[1] > 0) | (x < 0 & loss1[1] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta1[,(n+1):(2*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,2]),
+				function(x) ifelse((x > 0 & loss1[2] > 0) | (x < 0 & loss1[2] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta1[,(2*n+1):(3*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,3]),
+				function(x) ifelse((x > 0 & loss1[3] > 0) | (x < 0 & loss1[3] < 0),abs(x),-abs(x)))
+		out.2<-sapply(2*dw.beta2[,1:n]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,1]), 
+				function(x) ifelse((x > 0 & loss1[1] > 0) | (x < 0 & loss1[1] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta2[,(n+1):(2*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,2]),
+				function(x) ifelse((x > 0 & loss1[2] > 0) | (x < 0 & loss1[2] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta2[,(2*n+1):(3*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,3]),
+				function(x) ifelse((x > 0 & loss1[3] > 0) | (x < 0 & loss1[3] < 0),abs(x),-abs(x)))
+		out.3<-sapply(2*dw.beta3[,1:n]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,1]), 
+				function(x) ifelse((x > 0 & loss1[1] > 0) | (x < 0 & loss1[1] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta3[,(n+1):(2*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,2]),
+				function(x) ifelse((x > 0 & loss1[2] > 0) | (x < 0 & loss1[2] < 0),abs(x),-abs(x))) +
+				sapply(2*dw.beta3[,(2*n+1):(3*n)]%*%X%*%XprimeX.inv%*%t(X)%*%(w.curr[,3]),
+				function(x) ifelse((x > 0 & loss1[3] > 0) | (x < 0 & loss1[3] < 0),abs(x),-abs(x)))
+		out<-sum(n)*c(out.1, out.2, out.3)
+		out
 	  }
+	  
 	  n<-length(treat)
 	  n.t<-c(sum(T1),sum(T2),sum(T3),sum(T4))
 	  x.orig<-x<-cbind(as.matrix(X))
@@ -386,37 +626,53 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	  ##Generate estimates for balance and CBPSE
 	  gmm.init<-beta.curr
 	 
-	  opt.bal<-tryCatch({
-							optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
-						},
-						error = function(err)
-						{
-							return(optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
-						})
-	  beta.bal<-opt.bal$par
-	  
+	  if (twostep)
+	  {
+		opt.bal<-optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="BFGS", gr = bal.gradient, hessian=TRUE)
+	  }
+	  else
+	  {
+		  opt.bal<-tryCatch({
+								optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
+							},
+							error = function(err)
+							{
+								return(optim(gmm.init, bal.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
+							})	  
+		}
+	  beta.bal<-opt.bal$par	  
 	  if(bal.only) opt1<-opt.bal 
-	  
+	  	  
 	  if(!bal.only)
 	  {
-	  gmm.glm.init<-tryCatch({
-								optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
-							},
-							error = function(err)
-							{
-								return(optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
-							})
-	  gmm.bal.init<-tryCatch({
-								optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
-							},
-							error = function(err)
-							{
-								return(optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
-							})
-							
+		if (twostep)
+		{
+			this.invV<-gmm.func(gmm.init)$invV
+			
+			gmm.glm.init<-optim(mcoef, gmm.loss, control=list("maxit"=iterations), method="BFGS", gr = gmm.gradient, hessian=TRUE, invV = this.invV)
+			gmm.bal.init<-optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="BFGS", gr = gmm.gradient, hessian=TRUE, invV = this.invV)
+		}
+		else
+		{
+			gmm.glm.init<-tryCatch({
+									optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
+								},
+								error = function(err)
+								{
+									return(optim(mcoef,gmm.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
+								})
+			gmm.bal.init<-tryCatch({
+									optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE)
+								},
+								error = function(err)
+								{
+									return(optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="Nelder-Mead", hessian=TRUE))
+								})
+		}
+		
 		if(gmm.glm.init$val<gmm.bal.init$val) opt1<-gmm.glm.init else opt1<-gmm.bal.init
 		}
-				
+		
 	  ##Generate probabilities
 		beta.opt<-matrix(opt1$par,nrow=k,ncol=no.treats-1)
 		theta.opt<-X%*%beta.opt
@@ -431,7 +687,7 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		probs.opt[,4]<-pmin(1-probs.min,probs.opt[,4])
 		probs.opt[,4]<-pmax(probs.min,probs.opt[,4])
 	  
-	  J.opt<-gmm.func(beta.opt)$loss
+	  J.opt<-ifelse(twostep, gmm.func(beta.opt, invV = this.invV)$loss, gmm.func(beta.opt)$loss)
 	  
 	  if ((J.opt > gmm.loss(mcoef)) & (bal.loss(beta.opt) > bal.loss(mcoef)))
 		{	  
@@ -460,13 +716,9 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	  	  norm4<-sum(1/probs.opt[which(T4==1),4])
 	  }
 
-	  w<-array(dim=n)
-	  w[which(T1==1)]<-1/probs.opt[which(T1==1),1]/norm1
-	  w[which(T2==1)]<-1/probs.opt[which(T2==1),2]/norm2
-	  w[which(T3==1)]<-1/probs.opt[which(T3==1),3]/norm3
-	  w[which(T4==1)]<-1/probs.opt[which(T4==1),4]/norm4
+	  w<-(T1 == 1)/probs.opt[,1]/norm1 + (T2 == 1)/probs.opt[,2]/norm2 + (T3 == 1)/probs.opt[,3]/norm3 + (T4 == 1)/probs.opt[,4]/norm4
 
-	  W<-ginv(gmm.func(beta.opt)$V)
+	  W<-gmm.func(beta.opt)$invV
 	  X.G.1.1<-t(-X*probs.opt[,2]*(1-probs.opt[,2]))%*%X
 	  X.G.1.2<-t(X*probs.opt[,2]*probs.opt[,3])%*%X
 	  X.G.1.3<-t(X*probs.opt[,2]*probs.opt[,4])%*%X
@@ -505,9 +757,9 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
 					 "deviance"=deviance,"weights"=w,
 					 "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
-					 "data"=data, "J"=J.opt,"df"=k,"var"=vcov)
+					 "data"=data, "J"=J.opt,"df"=k,"var"=vcov, "bal" = bal.loss(beta.opt), "mle.bal" = bal.loss(mcoef), 
+					 "mle.J" = ifelse(twostep,gmm.func(mcoef, invV = this.invV)$loss, gmm.loss(mcoef)))
   
 		class(output)<- c("CBPS")
 		output
 }
-

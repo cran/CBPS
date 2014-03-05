@@ -12,7 +12,7 @@
 \value{
   Returns a list whose elements are lists associated with each time step in the marginal structural model.   Each of the sublists has two matrices, "original" (before weighting) and "balanced" (after weighting).  
 }
-\author{Marc Ratkovic, Kosuke Imai, and Christian Fong.}
+\author{Marc Ratkovic, Christian Fong, and Kosuke Imai.}
 
 \examples{
 

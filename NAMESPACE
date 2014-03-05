@@ -1,6 +1,7 @@
 importFrom(MASS, mvrnorm, ginv)
 importFrom(nnet, multinom)
 importFrom(numDeriv, jacobian)
+importFrom(MatchIt, matchit)
 export(CBPS, summary.CBPS, IPW, DR, MSMdata, balance)
 
 S3method(summary, CBPS)

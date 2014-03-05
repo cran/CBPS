@@ -11,7 +11,7 @@
 \value{
   Returns a list of two matrices, "original" (before weighting) and "balanced" (after weighting).  
 }
-\author{Marc Ratkovic, Kosuke Imai, and Christian Fong.}
+\author{Christian Fong, Marc Ratkovic, and Kosuke Imai.}
 
 \examples{
 
@@ -19,17 +19,22 @@
 ###
 ### Example: Optimal Covariate Balance
 ###
-#Run for 4-treatment case
+# Run for 4-treatment case
 set.seed(1)
-##Generate random X and underlying coefficients for probability.  Determine probs and treatments.
-X<-cbind(rep(1,1000),mvrnorm(1000,c(0,0,0), Sigma=matrix(c(5,.5,-.03,.5,1,-.27,-.03,-.27,1),3,3)))
+# Generate random X and underlying coefficients for probability.  
+# Determine probs and treatments.
+X<-cbind(rep(1,1000), mvrnorm(1000,c(0,0,0), 
+		 Sigma=matrix(c(5,.5,-.03,.5,1,-.27,-.03,-.27,1),3,3)))
 beta<-matrix(rnorm(12),4,3)
 baseline.prob<-apply(X\%*\%beta,1,function(x) (1+sum(exp(x)))^-1)
-prob<-cbind(baseline.prob, exp(X\%*\%beta[,1])*baseline.prob, exp(X\%*\%beta[,2])*baseline.prob, 
-					exp(X\%*\%beta[,3])*baseline.prob)
+prob<-cbind(baseline.prob, exp(X\%*\%beta[,1])*baseline.prob, 
+			exp(X\%*\%beta[,2])*baseline.prob, 
+			exp(X\%*\%beta[,3])*baseline.prob)
 treat.latent<-runif(1000)
-treat<-ifelse(treat.latent < prob[,1], 1, ifelse(treat.latent < (prob[,1] + prob[,2]), 2, 
-				ifelse(treat.latent < (prob[,1] + prob[,2] + prob[,3]), 3, 4)))
+treat<-ifelse(treat.latent < prob[,1], 1, 
+			  ifelse(treat.latent < (prob[,1] + prob[,2]), 2, 
+			  ifelse(treat.latent < (prob[,1] + prob[,2] + prob[,3]), 
+			  3, 4)))
 X<-X[,-1]
 fit4<-CBPS(treat ~ X, ATT = FALSE)
 balance(fit4)

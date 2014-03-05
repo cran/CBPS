@@ -1,4 +1,4 @@
-CBPS <- function(formula, data, na.action, ATT=NULL, method="over",type="propensity", iterations=NULL, standardize = FALSE, ...) {
+CBPS <- function(formula, data, na.action, ATT=NULL, method="over",type="propensity", iterations=NULL, standardize = TRUE, twostep = FALSE, ...) {
 
 	if (missing(data)) 
 		data <- environment(formula)
@@ -28,8 +28,9 @@ CBPS <- function(formula, data, na.action, ATT=NULL, method="over",type="propens
 			
 		X<-cbind(1,X[,apply(X,2,sd)>0])
 
+		
 		fit <- eval(call("CBPS.fit", X = X, treat = Y, ATT=ATT, 
-				    intercept = attr(mt, "intercept") > 0L, method=method, iterations=iterations, standardize = standardize))	
+				    intercept = attr(mt, "intercept") > 0L, method=method, iterations=iterations, standardize = standardize, twostep = twostep))	
 			
 		fit$model <- mf
 		fit$na.action <- attr(mf, "na.action")
@@ -120,7 +121,7 @@ CBPS <- function(formula, data, na.action, ATT=NULL, method="over",type="propens
     fit
 }
 
-CBPS.fit<-function(treat, X, ATT, X.bal=X, method, iterations, standardize, ...){
+CBPS.fit<-function(treat, X, ATT, X.bal=X, method, iterations, standardize, twostep, ...){
 	k=0
 	if(method=="over") bal.only=FALSE
 	if(method=="exact") bal.only=TRUE
@@ -150,23 +151,25 @@ CBPS.fit<-function(treat, X, ATT, X.bal=X, method, iterations, standardize, ...)
 
   if (no.treats == 2)
   {
- 	output<-CBPS.2Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ATT, standardize = standardize)
+	output<-CBPS.2Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ATT, standardize = standardize, twostep = twostep)
+
   }
   
   if (no.treats == 3)
   {
-	output<-CBPS.3Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize)
+	output<-CBPS.3Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
   }
   
   if (no.treats == 4)
   {
-	output<-CBPS.4Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize)
+	output<-CBPS.4Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
   }
 
-  if (no.treats > 4)
-  {
-	stop("Use only treatments which can take 2, 3, or 4 values")
-  }
+  ## This will be included in future versions
+  #if (no.treats > 4)
+  #{
+#	output<-CBPS.Continuous(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
+ # }
 
   if (no.treats %in% c(2,3,4))
   {
@@ -231,7 +234,6 @@ CBPS.fit<-function(treat, X, ATT, X.bal=X, method, iterations, standardize, ...)
 		rownames(output$var)<-colnames(output$var)
 	}
   }
-  
   output
 }
 
@@ -731,6 +733,7 @@ balance.CBMSM<-function(object, stabilized = TRUE, ...)
 	out
 }
 
+#Have a single function that estimates weighted means, standard erros, pvals
 TE.est<-function(dv, object, M=1){
 	
   match.func<-function(probs,log.odds=F,treat,M){
@@ -753,6 +756,7 @@ TE.est<-function(dv, object, M=1){
   return(output)
 }
 
+## Rename IPW.est
 IPW<-function(outcome, treat, data=parent.frame(), pscore, k){
 	IPW.inner<-function(outcome, treat, pscore, k){
 	n <- length(treat)

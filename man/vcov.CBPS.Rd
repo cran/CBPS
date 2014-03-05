@@ -15,7 +15,7 @@
 }
 \references{This documentation is modeled on the documentation of the generic \link{vcov}.}
 
-\author{Marc Ratkovic, Kosuke Imai, and Christian Fong.}
+\author{Christian Fong, Marc Ratkovic, and Kosuke Imai.}
 
 \seealso{\link{vcov}}
 
@@ -28,7 +28,8 @@
 ##Load the LaLonde data
 data(LaLonde)
 ## Estimate CBPS via logistic regression
-fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), data = LaLonde, ATT = TRUE)
+fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), 
+		    data = LaLonde, ATT = TRUE)
 ## Get the variance-covariance matrix.
 vcov(fit)
 }

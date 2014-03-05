@@ -9,9 +9,12 @@
 For cross-sectional data, the method can take treatments with a control (baseline) condition and either 1, 2, or 3 distinct treatment conditions.  With longitudinal data, the method returns marginal structural model weights that can be entered directly into a linear model.  The method also handles multiple binary treatments adminstered concurrently.}
 \usage{
 	  CBPS(formula, data, na.action, ATT = NULL, method = "over",
-	       type="propensity", iterations = NULL, standardize = FALSE, ...)
-	  CBPS.fit(treat, X, ATT, X.bal = X, method, iterations, standardize, ...)
-	  CBMSM.fit(treat, X, time, method, MultiBin.fit = FALSE, standardize, ...)
+	       type="propensity", iterations = NULL, 
+		   standardize = TRUE, twostep = FALSE, ...)
+	  CBPS.fit(treat, X, ATT, X.bal = X, method, iterations, 
+			   standardize, twostep, ...)
+	  CBMSM.fit(treat, X, time, method, MultiBin.fit = FALSE, 
+				standardize, ...)
 }
 \arguments{
   \item{formula}{For the cross-sectional case (type="propensity"), an object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.  For the marginal structural model (type="MSM"), a list of formulas.  The function assumes that there is one formula for each time, and they are ordered from the first time to the last time.}
@@ -27,7 +30,8 @@ For cross-sectional data, the method can take treatments with a control (baselin
    \item{time}{A vector giving the time period for each observation; only used for type "MSM"}
    \item{MultiBin.fit}{A parameter for whether the multiple binary treatments occur concurrently (FALSE) or over consecutive time periods (TRUE) as in a marginal structural model.}
    \item{iterations}{An optional parameter for the maximum number of iterations for the optimization.  Default is 1000 for binary and 10000 otherwise.}
-   \item{standardize}{Set to \code{TRUE} to get inverse propensity score weights (IPW) as described in Hirano, Imbens, and Ridder (2003).  Default is \code{FALSE}, which returns Horvitz-Thompson weights.}
+   \item{standardize}{Default is \code{TRUE}, which gets inverse propensity score weights (IPW) as described in Hirano, Imbens, and Ridder (2003).   Set to \code{FALSE} to return Horvitz-Thompson weights.}
+   \item{twostep}{Set to \code{TRUE} to use a two-step estimator, which will run substantially faster than continuous-updating.  Default is \code{FALSE}, which uses the continuous-updating estimator described by Imai and Ratkovic (2014).  Has not been implemented for MSM.}
   \item{...}{Other parameters to be passed through to \code{optim()}}
 }
 \details{Fits covariate balancing propensity scores.}
@@ -47,17 +51,20 @@ For cross-sectional data, the method can take treatments with a control (baselin
   \item{formula}{The formula supplied.}
   \item{data}{The data argument.}
   \item{J}{The J-statistic at convergence.}
+  \item{mle.J}{The J-statistic for the parameters from maximum likelihood estimation.}
+  \item{bal}{The balance loss at convergence.}
+  \item{mle.bal}{The balance loss for the paramaters from maximum likelihood estimation.}
   \item{df}{The degrees of freedom.}
   \item{var}{The covariance matrix, evaluated numerically from \code{optim()}.}
 }
-\references{Imai, Kosuke and Marc Ratkovic.  Forthcoming. ``Covariate Balancing Propensity Score.'' Journal of the Royal Statistical Society, Series B (Statistical Methodology). \url{http://imai.princeton.edu/research/CBPS.html}		
+\references{Imai, Kosuke and Marc Ratkovic.  2014. ``Covariate Balancing Propensity Score.'' Journal of the Royal Statistical Society, Series B (Statistical Methodology). \url{http://imai.princeton.edu/research/CBPS.html}		
 	
 	Imai, Kosuke and Marc Ratkovic.  ``Robust Estimation of Inverse Probability Weights for Marginal Structural Models.'' Unpublished Manuscript, Princeton University. \url{http://imai.princeton.edu/research/MSM.html} 
 	
 	Fong, Christian.  ``Covariate Balancing Propensity Scores for Multi-Valued Treatment Specifications.''  Unpublished Manuscript.
 	}
 
-\author{Marc Ratkovic, Kosuke Imai, and Christian Fong; The CBPS function is based on the code for version 2.15.0 of the glm function implemented in the stats package, originally written by Simon Davies.  This documenation is likewise modeled on the documentation for glm and borrows its language where the arguments and values are the same.}
+\author{Christian Fong, Marc Ratkovic, and Kosuke Imai; The CBPS function is based on the code for version 2.15.0 of the glm function implemented in the stats package, originally written by Simon Davies.  This documenation is likewise modeled on the documentation for glm and borrows its language where the arguments and values are the same.}
 
 \seealso{\link{summary.CBPS}}
 
@@ -70,7 +77,8 @@ For cross-sectional data, the method can take treatments with a control (baselin
 ##Load the LaLonde data
 data(LaLonde)
 ## Estimate CBPS via logistic regression
-fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), data = LaLonde, ATT = TRUE)
+fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), 
+			data = LaLonde, ATT = TRUE)
 summary(fit)
 ## matching via MatchIt: one to one nearest neighbor with replacement
 library(MatchIt)
@@ -131,11 +139,12 @@ library(MASS)
 X<-cbind(1,mvrnorm(1000,c(0,0,0), Sigma=matrix(c(5,.5,-.03,.5,1,-.27,-.03,-.27,1),3,3)))
 beta<-matrix(rnorm(8),4,2)
 prob<-cbind((1+exp(X\%*\%beta[,1])+exp(X\%*\%beta[,2]))^-1,
-				 exp(X\%*\%beta[,1])*(1+exp(X\%*\%beta[,1])+exp(X\%*\%beta[,2]))^-1,
-				 exp(X\%*\%beta[,2])*(1+exp(X\%*\%beta[,1])+exp(X\%*\%beta[,2]))^-1)
+			 exp(X\%*\%beta[,1])*(1+exp(X\%*\%beta[,1])+exp(X\%*\%beta[,2]))^-1,
+			 exp(X\%*\%beta[,2])*(1+exp(X\%*\%beta[,1])+exp(X\%*\%beta[,2]))^-1)
 X<-X[,2:4]
 treat.latent<-runif(1000)
-treat<-ifelse(treat.latent < prob[,1], 1, ifelse(treat.latent < (prob[,1] + prob[,2]), 2, 3))
+treat<-ifelse(treat.latent < prob[,1], 1, 
+			  ifelse(treat.latent < (prob[,1] + prob[,2]), 2, 3))
 fit3<-CBPS(treat ~ X, ATT = FALSE)
 
 
@@ -178,7 +187,8 @@ treat.mat<-cbind(treat.1,treat.2,treat.3)\%*\%t(contrast.mat)
 Rsq.raw<-apply(treat.mat,2,F=function(x) summary(lm(x~X1))$r.sq)
 Rsq.wt<-apply(treat.mat,2,F=function(x) summary(lm(x~X1,w=multibin1$w))$r.sq)
 
-plot(Rsq.raw,1:7,type="n",xlim=range(cbind(Rsq.raw,Rsq.wt)),ylab="Contrasts",xlab="R-Squared")
+plot(Rsq.raw,1:7,type="n",xlim=range(cbind(Rsq.raw,Rsq.wt)),
+	 ylab="Contrasts",xlab="R-Squared")
 abline(h=c(1:7),col=gray(.5))
 points(Rsq.raw,1:7,pch="O")
 points(Rsq.wt,1:7,pch="X")

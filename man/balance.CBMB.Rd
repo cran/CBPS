@@ -12,7 +12,7 @@
 \value{
   Returns a list of two matrices, "original" (before weighting) and "balanced" (after weighting).  
 }
-\author{Marc Ratkovic, Kosuke Imai, and Christian Fong.}
+\author{Christian Fong, Marc Ratkovic, and Kosuke Imai.}
 
 \examples{
 

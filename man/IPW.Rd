@@ -14,13 +14,13 @@
   \item{pscore}{A vector of propensity scores.}
   \item{k}{The number of covariates considered in the generation of the propensity scores.}
 }
-\details{Calculates the inverse probability weighting estimators from Lunceford and Davidian (2004).  For use with CBPS, run only with ATE.}
+\details{Calculates the inverse probability weighting estimators from Lunceford and Davidian (2004).  For use with CBPS, run only with ATE.  Note that the IPW weights from Hirano et. al (2003) can be obtained by setting \code{standardize} = \code{TRUE} in CBPS.}
 \value{
   Returns a data frame whose columns are the point estimates and standard errors for these inverse probability weighting estimators, and whose rows correspond to IPW1, IPW2, and IPW3.  Use only with binary treatments.
 }
 \references{Lunceford, Jared and Marie Davidian.  ``Stratification and Weighting Via the Propensity Score in Estimation of Causal Treatment Effects: A Comparative Study.'' Statistics in Medicine 23, 15 October 2004.}
 
-\author{Marc Ratkovic, Kosuke Imai, and Christian Fong.}
+\author{Christian Fong, Marc Ratkovic, and Kosuke Imai.}
 
 \seealso{\link{DR}}
 
@@ -33,9 +33,10 @@
 ##Load the LaLonde data
 data(LaLonde)
 ## Estimate CBPS via logistic regression for ATE (Run with ATE only)
-fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), data = LaLonde, ATT = FALSE)
+fit <- CBPS(treat ~ age + educ + re75 + re74 + I(re75==0) + I(re74==0), 
+			data = LaLonde, ATT = FALSE)
 ##Calculate the IPW estimators
-inverse.prob.wt <- IPW(outcome = re78, treat = treat, data = LaLonde, pscore = fitted(fit), 
-                       k = length(coef(fit)))
+inverse.prob.wt <- IPW(outcome = re78, treat = treat, data = LaLonde, 
+					   pscore = fitted(fit), k = length(coef(fit)))
 }
 }

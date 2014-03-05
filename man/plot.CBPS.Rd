@@ -12,6 +12,6 @@
 Plots the absolute difference in standardized means by contrast for all covariates, both before and after weighting.  Prints a mapping of the contrast names given in the axes to the names of the treatments to the console.
 }
 
-\author{Marc Ratkovic}
+\author{Christian Fong, Marc Ratkovic, and Kosuke Imai.}
 
 \seealso{\link{CBPS}, \link{plot}}

@@ -16,6 +16,6 @@
   \item{Log-Likelihood}{The log-likelihood of the fitted model.}
 }
 
-\author{Marc Ratkovic}
+\author{Christian Fong, Marc Ratkovic, and Kosuke Imai.}
 
 \seealso{\link{CBPS}, \link{summary}}
