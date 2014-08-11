@@ -1,18 +1,19 @@
 \name{plot.CBMSM}
 \alias{plot.CBMSM}
-\title{Plotting Covariate Balancing Propensity Score Estimation}
+\title{Plotting Covariate Balancing Propensity Score Estimation for Marginal Structural Models}
 \description{Plots the absolute difference in standardized means before and after weighting.}
-\usage{\method{plot}{CBMSM}(x,stabilized=TRUE,...)}
+\usage{\method{plot}{CBMSM}(x, covars = NULL, silent = TRUE, ...)}
 \arguments{
   \item{x}{an object of class \dQuote{CBMSM}.}
-  \item{stabilized}{Set to \code{TRUE} to use stabilized weights, and \code{FALSE} to use unstabilized weights.  Default is \code{TRUE}.}
+  \item{covars}{Indices of the covariates to be plotted (excluding the intercept).  For example, if only the first two covariates from \code{balance} are desired, set \code{covars} to 1:2.  The default is \code{NULL}, which plots all covariates.}
+  \item{silent}{If set to \code{FALSE}, returns the absolute imbalance for each treatment history pair before and after weighting.  This helps the user to create his or her own customized plot. Default is \code{TRUE}, which returns nothing.}
   \item{...}{Additional arguments to be passed to plot.}
 }
-\details{Covariate balance is improved if the plot's points are below the plotted line of y=x..}
+\details{Covariate balance is improved if the plot's points are below the plotted line of y=x.}
 \value{
-For each contrast and all covariates, plots the absolute mean difference before weighting on the x-axis and after weighting on the y-axis.
+The x-axis gives the imbalance for each covariate-treatment history pair without any weighting, and the y-axis gives the imbalance for each covariate-treatment history pair after CBMSM weighting.  Imbalance is measured as the absolute difference in standardized means for the two treatment histories.  Means are standardized by the standard deviation of the covariate in the full sample.
 }
 
-\author{Marc Ratkovic}
+\author{Marc Ratkovic and Christian Fong}
 
-\seealso{\link{CBPS}, \link{plot}}
+\seealso{\link{CBMSM}, \link{plot}}

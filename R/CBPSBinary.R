@@ -269,7 +269,14 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		XW.2<- X*(probs.opt-1+treat)^-1
 		XG.2<- -X*probs.opt^.5*(1-probs.opt)^.5*abs((probs.opt-1+treat)^-1)#*(abs(probs.opt-treat)/(probs.opt*(1-probs.opt)))^.5
 	}
-	W<-gmm.func(beta.opt)$invV
+	if (twostep)
+	{
+		W<-this.invV
+	}
+	else
+	{
+		W<-gmm.func(beta.opt)$invV
+	}
   	W1<-rbind(t(XW.1),t(XW.2))
   	Omega<-(W1%*%t(W1)/n)
 	G<-cbind(t(XG.1)%*%XG.1,t(XG.2)%*%XG.2)/n
