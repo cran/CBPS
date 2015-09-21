@@ -36,11 +36,23 @@
   \item{call}{The matched call.}
   \item{formula}{The formula supplied.}
   \item{data}{The data argument.}
+  \item{treat.hist}{A matrix of the treatment history, with each observation in rows and time in columns.}
+  \item{treat.cum}{A vector of the cumulative treatment history, by individual.}
 }
-\references{Imai, Kosuke and Marc Ratkovic.  2014. ``Covariate Balancing Propensity Score.'' Journal of the Royal Statistical Society, Series B (Statistical Methodology). \url{http://imai.princeton.edu/research/CBPS.html }		
+
+\references{
+
+Imai, Kosuke and Marc Ratkovic.  2014. ``Covariate Balancing
+Propensity Score.'' Journal of the Royal Statistical Society, Series B
+(Statistical
+Methodology). \url{http://imai.princeton.edu/research/CBPS.html}
 	
-	Imai, Kosuke and Marc Ratkovic.  ``Robust Estimation of Inverse Probability Weights for Marginal Structural Models.'' Unpublished Manuscript, Princeton University. \url{http://imai.princeton.edu/research/MSM.html }
-	}
+Imai, Kosuke and Marc Ratkovic.  ``Robust Estimation of Inverse
+Probability Weights for Marginal Structural Models.''  Journal of the
+American Statistical Association,
+Forthcoming. \url{http://imai.princeton.edu/research/MSM.html} 
+
+}
 
 \author{Marc Ratkovic, Christian Fong, and Kosuke Imai; The CBMSM function is based on the code for version 2.15.0 of the glm function implemented in the stats package, originally written by Simon Davies.  This documenation is likewise modeled on the documentation for glm and borrows its language where the arguments and values are the same.}
 
@@ -49,23 +61,42 @@
 \examples{
 \dontrun{
 
-data(Blackwell)
-name.cands<-sort(unique(Blackwell$demName))
-treat.hist<-matrix(NA,nr=length(unique(name.cands)),nc=length(unique(Blackwell$time)))
-for(i in 1:length(unique(name.cands))) for(j in 1:length(unique(Blackwell$time))){{
-	treat.hist[i,j]<-with(Blackwell, d.gone.neg[demName==name.cands[i] & time==j])}}
-treat.hist.fac<-apply(treat.hist,1,function(x) paste(x, collapse="+"))
-cm.treat<-rowSums(treat.hist)
+##Load Blackwell data
 
-msm1<-CBMSM(d.gone.neg ~ d.gone.neg.l1 + d.gone.neg.l2 + d.neg.frac.l3 + camp.length + 
-			camp.length + deminc + base.poll + as.factor(year) + base.und + office, 
-			id = as.numeric(as.factor(Blackwell$demName)), time = Blackwell$time, 
-			data = Blackwell, type = "MSM", twostep = TRUE, msm.variance = "approx", 
-			time.vary = FALSE)
-summary(lm(Blackwell$demprcnt[Blackwell$time==1] ~ treat.hist.fac, 
-		   weights=msm1$w[Blackwell$time==1]))
-summary(lm(Blackwell$demprcnt[Blackwell$time==1] ~ cm.treat, 
-		   weights=msm1$w[Blackwell$time==1]))
+data(Blackwell)
+
+form1<-"d.gone.neg ~ d.gone.neg.l1 + d.gone.neg.l2 + d.neg.frac.l3 + camp.length + camp.length + 
+		deminc + base.poll + year.2002 + year.2004 + year.2006 + base.und + office"
+
+
+##Fitting the models in Imai and Ratkovic  (2014)
+##Warning: may take a few mintues; setting time.vary to FALSE
+##Results in a quicker fit but with poorer balance
+
+fit1<-CBMSM(formula = form1, time=Blackwell$time,id=Blackwell$demName,data=Blackwell, type="MSM",  
+	  iterations = NULL, twostep = TRUE, msm.variance = "full", time.vary = TRUE)
+
+fit2<-CBMSM(formula = form1, time=Blackwell$time,id=Blackwell$demName,data=Blackwell, type="MSM",  
+	  iterations = NULL, twostep = TRUE, msm.variance = "approx", time.vary = TRUE)
+
+
+##Assessing balance
+
+bal1<-balance.CBMSM(fit1)
+bal2<-balance.CBMSM(fit2)
+
+##Effect estimation: Replicating Effect Estimates in 
+##Table 3 of Imai and Ratkovic (2014)
+
+lm1<-lm(demprcnt[time==1]~fit1$treat.hist,data=Blackwell,weights=fit1$glm.weights)
+lm2<-lm(demprcnt[time==1]~fit1$treat.hist,data=Blackwell,weights=fit1$weights)
+lm3<-lm(demprcnt[time==1]~fit1$treat.hist,data=Blackwell,weights=fit2$weights)
+
+lm4<-lm(demprcnt[time==1]~fit1$treat.cum,data=Blackwell,weights=fit1$glm.weights)
+lm5<-lm(demprcnt[time==1]~fit1$treat.cum,data=Blackwell,weights=fit1$weights)
+lm6<-lm(demprcnt[time==1]~fit1$treat.cum,data=Blackwell,weights=fit2$weights)
+
+
 
 ### Example: Multiple Binary Treatments Administered at the Same Time
 n<-200

@@ -1,12 +1,13 @@
 \name{balance}
 \alias{balance}
+\alias{balance.npCBPS}
 \alias{balance.CBPS}
 \alias{balance.CBMSM}
 \title{Optimal Covariate Balance}
 \description{Returns the mean and standardized mean associated with each treatment group, before and after weighting.}
 \usage{\method{balance}{CBPS}(object, ...)}
 \arguments{
-  \item{object}{A CBPS (or CBMSM) object.}
+  \item{object}{A CBPS, npCBPS, or CBMSM object.}
   \item{...}{Additional arguments to be passed to balance.}
 }
 \details{For binary and multi-valued treatments as well as marginal structural models, each of the matrices' rows are the covariates and whose columns are the weighted mean, and standardized mean associated with each treatment group.  The standardized mean is the weighted mean divided by the standard deviation of the covariate for the whole population.  For continuous treatments, returns the absolute Pearson correlation between the treatment and each covariate.}
@@ -33,10 +34,10 @@ prob<-cbind(baseline.prob, exp(X\%*\%beta[,1])*baseline.prob,
 			exp(X\%*\%beta[,2])*baseline.prob, 
 			exp(X\%*\%beta[,3])*baseline.prob)
 treat.latent<-runif(1000)
-treat<-ifelse(treat.latent < prob[,1], 1, 
+treat<-factor(ifelse(treat.latent < prob[,1], 1, 
 			  ifelse(treat.latent < (prob[,1] + prob[,2]), 2, 
 			  ifelse(treat.latent < (prob[,1] + prob[,2] + prob[,3]), 
-			  3, 4)))
+			  3, 4))))
 X<-X[,-1]
 fit4<-CBPS(treat ~ X, ATT = FALSE)
 balance(fit4)

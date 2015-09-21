@@ -1,12 +1,19 @@
 CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ATT, standardize, twostep, ...){
 	probs.min<- 1e-6
-	if (is.null(iterations)) iterations<-1000
-	
-	treat<-sapply(treat,function(x) ifelse(x==TRUE,1,ifelse(x==FALSE,0,-1)))
-	
-	if (min(treat) < 0)
-	{
-		stop("For binary, treatments must be TRUE/FALSE or 1/0")
+
+  treat.orig<-treat
+	treat<-sapply(treat,function(x) ifelse(x==levels(factor(treat))[2],1,0))
+	if(ATT == 2)  treat<-1-treat
+  
+  if (ATT == 1){
+    print(paste0("Finding ATT with T=",as.character(levels(factor(treat.orig))[2]),
+                 " as the treatment.  Set ATT=2 to find ATT with T=",
+                 as.character(levels(factor(treat.orig))[1])," as the treatment"))    
+  }
+	if (ATT == 2){
+	  print(paste0("Finding ATT with T=",as.character(levels(factor(treat.orig))[1]),
+	               " as the treatment.  Set ATT=1 to find ATT with T=",
+	               as.character(levels(factor(treat.orig))[2])," as the treatment"))    
 	}
 	
 	##Generates ATT weights.	Called by loss function, etc.
@@ -173,8 +180,7 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	x.orig<-x<-cbind(as.matrix(X))
     
 	##GLM estimation
-	glm1<-glm(treat~X-1,family=binomial)
-	boundary<-glm1$boundary	
+	glm1<-suppressWarnings(glm(treat~X-1,family=binomial))
 	glm1$coef[is.na(glm1$coef)]<-0
 	probs.glm<-glm1$fit
 	glm1$fit<-probs.glm<-pmin(1-probs.min,probs.glm)
@@ -187,6 +193,7 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	
 	##Generate estimates for balance and CBPSE
 	gmm.init<-beta.curr
+	this.invV<-gmm.func(gmm.init)$invV
   
 	if (twostep)
 	{
@@ -204,7 +211,6 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	{
 		if (twostep)
 		{
-			this.invV<-gmm.func(gmm.init)$invV
 			gmm.glm.init<-optim(gmm.init, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE, gr = gmm.gradient, invV = this.invV)
 			gmm.bal.init<-optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE, gr = gmm.gradient, invV = this.invV)
 		}
@@ -246,7 +252,7 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	}
 	if (ATT)
 	{
-		w.opt<-(treat == 1)*n/sum(treat == 1)/norm1 + (treat == 0)*n/sum(treat == 1)*((treat - probs.opt)/(1-probs.opt))/norm2
+		w.opt<-(treat == 1)*n/sum(treat == 1)/norm1 + abs((treat == 0)*n/sum(treat == 1)*((treat - probs.opt)/(1-probs.opt))/norm2)
 	}
 	else
 	{		
@@ -284,10 +290,8 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 
 	beta.opt<-opt1$par
 		
-	output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
-				 "deviance"=deviance,"weights"=w.opt,
-				 "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
-				 "data"=data, "J"=J.opt,"df"=k,"var"=vcov, "bal"=bal.loss(beta.opt), "mle.bal"=bal.loss(glm1$coef), 
+	output<-list("coefficients"=beta.opt,"fitted.values"=probs.opt,"deviance"=deviance,"weights"=w.opt,
+				 "y"=treat,"x"=X,"converged"=opt1$conv,"J"=J.opt,"var"=vcov, 
 				 "mle.J"=ifelse(twostep, gmm.func(glm1$coef, invV = this.invV)$loss, gmm.loss(glm1$coef)))
 
 	class(output)<- c("CBPS","glm","lm")

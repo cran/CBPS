@@ -1,7 +1,6 @@
 CBPS.Continuous<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, twostep, ...)
 {
 	probs.min<-1e-6
-	if (is.null(iterations)) iterations<-1000
 	
 	##The gmm objective function--given a guess of beta, constructs the GMM J statistic.
 	  gmm.func<-function(params.curr,X.gmm=Xtilde,invV=NULL){
@@ -208,6 +207,7 @@ CBPS.Continuous<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, ite
 		
 	  ##Generate weights
 	  w.opt<-exp(stabilizers - probs.opt)
+    if(standardize) w.opt<-w.opt/sum(w.opt)
 		
 	  #How are residuals now defined?
 	  residuals<- Ttilde - Xtilde%*%beta.opt
@@ -245,10 +245,8 @@ CBPS.Continuous<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, ite
 	  
 	  class(beta.opt)<-"coef"
 		
-	  output<-list("coefficients"=beta.opt, "sigmasq"=sigmasq, "residuals"=residuals,"fitted.values"=X%*%beta.opt,"rank"=k,"family"="CBPS",
-				   "deviance"=deviance,"weights"=w.opt,
-				   "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
-				   "data"=data, "J"=J.opt,"df"=k,"var"=vcov, "bal"=bal.loss(params.opt), "mle.bal"=mle.bal, "mle.J"=mle.J)
+	  output<-list("coefficients"=beta.opt, "sigmasq"=sigmasq,"fitted.values"=dnorm(treat,X%*%beta.opt,sigmasq),"deviance"=deviance,
+                 "weights"=w.opt,"y"=treat,"x"=X,"converged"=opt1$conv,"J"=J.opt,"var"=vcov, "mle.J"=mle.J)
   
 	  class(output)<- c("CBPSContinuous","CBPS")
 	  output

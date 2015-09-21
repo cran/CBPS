@@ -1,7 +1,6 @@
 CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, twostep, ...)
 {
   probs.min<-1e-6
-  if (is.null(iterations)) iterations<-1000
   
   no.treats<-length(levels(as.factor(treat)))
   treat.names<-levels(as.factor(treat))
@@ -22,12 +21,11 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
     theta.curr<-X%*%beta.curr
     baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
     probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob)
-    probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
     probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
-    probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
     probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
-    probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
     probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
+    norms<-apply(probs.curr,1,sum)
+    probs.curr<-probs.curr/norms
     
     w.curr<-cbind(2*T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3],
                   T2/probs.curr[,2] - T3/probs.curr[,3])
@@ -80,12 +78,11 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
     theta.curr<-X%*%beta.curr
     baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
     probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob)
-    probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
     probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
-    probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
     probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
-    probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
     probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
+    norms<-apply(probs.curr,1,sum)
+    probs.curr<-probs.curr/norms
     
     w.curr<-cbind(2*T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3],
                   T2/probs.curr[,2] - T3/probs.curr[,3])
@@ -107,12 +104,11 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
     theta.curr<-X%*%beta.curr
     baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
     probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob)
-    probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
     probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
-    probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
     probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
-    probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
     probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
+    norms<-apply(probs.curr,1,sum)
+    probs.curr<-probs.curr/norms
     
     w.curr<-cbind(2*T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3],
                   T2/probs.curr[,2] - T3/probs.curr[,3])
@@ -147,12 +143,11 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
     theta.curr<-X%*%beta.curr
     baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
     probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob)
-    probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
     probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
-    probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
     probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
-    probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
     probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
+    norms<-apply(probs.curr,1,sum)
+    probs.curr<-probs.curr/norms
     
     w.curr<-cbind(2*T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3],
                   T2/probs.curr[,2] - T3/probs.curr[,3])
@@ -192,12 +187,12 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
                    exp(X%*%mcoef[,1])/(1+exp(X%*%mcoef[,1])+exp(X%*%mcoef[,2])),
                    exp(X%*%mcoef[,2])/(1+exp(X%*%mcoef[,1])+exp(X%*%mcoef[,2])))
   colnames(probs.mnl)<-c("p1","p2","p3")
-  probs.mnl[,1]<-pmin(1-probs.min,probs.mnl[,1])
   probs.mnl[,1]<-pmax(probs.min,probs.mnl[,1])
-  probs.mnl[,2]<-pmin(1-probs.min,probs.mnl[,2])
   probs.mnl[,2]<-pmax(probs.min,probs.mnl[,2])
-  probs.mnl[,3]<-pmin(1-probs.min,probs.mnl[,3])
   probs.mnl[,3]<-pmax(probs.min,probs.mnl[,3])
+  norms<-apply(probs.mnl,1,sum)
+  probs.mnl<-probs.mnl/norms
+  
   mnl1$fit<-matrix(probs.mnl,nrow=n,ncol=no.treats)
   beta.curr<-mcoef
   beta.curr[is.na(beta.curr)]<-0
@@ -264,12 +259,12 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   theta.opt<-X%*%beta.opt
   baseline.prob<-apply(theta.opt,1,function(x) (1+sum(exp(x)))^-1)
   probs.opt<-cbind(baseline.prob, exp(theta.opt[,1])*baseline.prob, exp(theta.opt[,2])*baseline.prob)
-  probs.opt[,1]<-pmin(1-probs.min,probs.opt[,1])
   probs.opt[,1]<-pmax(probs.min,probs.opt[,1])
-  probs.opt[,2]<-pmin(1-probs.min,probs.opt[,2])
   probs.opt[,2]<-pmax(probs.min,probs.opt[,2])
-  probs.opt[,3]<-pmin(1-probs.min,probs.opt[,3])
   probs.opt[,3]<-pmax(probs.min,probs.opt[,3])
+  norms<-apply(probs.opt,1,sum)
+  probs.opt<-probs.opt/norms
+  
   
   J.opt<-ifelse(twostep, gmm.func(beta.opt, invV = this.invV)$loss, gmm.func(beta.opt)$loss)
   
@@ -328,12 +323,9 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   
   class(beta.opt) <- "coef"
   
-  output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
-               "deviance"=deviance,"weights"=w, "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
-               "data"=data, "J"=J.opt,"df"=k,"var"=vcov, "bal"=bal.loss(beta.opt), "mle.bal"=bal.loss(mcoef),  
-               "mle.J"=ifelse(twostep, gmm.func(mcoef, invV = this.invV)$loss, gmm.loss(mcoef)), "bal.bal" = bal.loss(beta.bal),
-               "cbps.likelihood"=sum(log(T1*probs.opt[,1] + T2*probs.opt[,2] + T3*probs.opt[,3])), 
-               "mle.likelihood"=sum(log(T1*probs.mnl[,1] + T2*probs.mnl[,2] + T3*probs.mnl[,3])))
+  output<-list("coefficients"=beta.opt,"fitted.values"=probs.opt,"deviance"=deviance,"weights"=w, 
+               "y"=treat,"x"=X,"converged"=opt1$conv,"J"=J.opt,"var"=vcov, 
+               "mle.J"=ifelse(twostep, gmm.func(mcoef, invV = this.invV)$loss, gmm.loss(mcoef)))
   
   class(output)<- c("CBPS")
   
@@ -343,7 +335,6 @@ CBPS.3Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize, twostep, ...)
 {
   probs.min<-1e-6
-  if (is.null(iterations)) iterations<-1000
   
   no.treats<-length(levels(as.factor(treat)))
   treat.names<-levels(as.factor(treat))
@@ -365,14 +356,12 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
     theta.curr<-X%*%beta.curr
     baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
     probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob, exp(theta.curr[,3])*baseline.prob)
-    probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
     probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
-    probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
     probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
-    probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
     probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
-    probs.curr[,4]<-pmin(1-probs.min,probs.curr[,4])
     probs.curr[,4]<-pmax(probs.min,probs.curr[,4])
+    norms<-apply(probs.curr,1,sum)
+    probs.curr<-probs.curr/norms
     
     w.curr<-cbind(T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] - T4/probs.curr[,4],
                   T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4],
@@ -437,14 +426,12 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
     theta.curr<-X%*%beta.curr
     baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
     probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob, exp(theta.curr[,3])*baseline.prob)
-    probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
     probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
-    probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
     probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
-    probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
     probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
-    probs.curr[,4]<-pmin(1-probs.min,probs.curr[,4])
     probs.curr[,4]<-pmax(probs.min,probs.curr[,4])
+    norms<-apply(probs.curr,1,sum)
+    probs.curr<-probs.curr/norms
     
     w.curr<-cbind(T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] - T4/probs.curr[,4],
                   T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4],
@@ -468,14 +455,12 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
     theta.curr<-X%*%beta.curr
     baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
     probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob, exp(theta.curr[,3])*baseline.prob)
-    probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
     probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
-    probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
     probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
-    probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
     probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
-    probs.curr[,4]<-pmin(1-probs.min,probs.curr[,4])
     probs.curr[,4]<-pmax(probs.min,probs.curr[,4])
+    norms<-apply(probs.curr,1,sum)
+    probs.curr<-probs.curr/norms
     
     w.curr<-cbind(T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] - T4/probs.curr[,4],
                   T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4],
@@ -526,14 +511,12 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
     theta.curr<-X%*%beta.curr
     baseline.prob<-apply(theta.curr,1,function(x) (1+sum(exp(x)))^-1)
     probs.curr<-cbind(baseline.prob, exp(theta.curr[,1])*baseline.prob, exp(theta.curr[,2])*baseline.prob, exp(theta.curr[,3])*baseline.prob)
-    probs.curr[,1]<-pmin(1-probs.min,probs.curr[,1])
     probs.curr[,1]<-pmax(probs.min,probs.curr[,1])
-    probs.curr[,2]<-pmin(1-probs.min,probs.curr[,2])
     probs.curr[,2]<-pmax(probs.min,probs.curr[,2])
-    probs.curr[,3]<-pmin(1-probs.min,probs.curr[,3])
     probs.curr[,3]<-pmax(probs.min,probs.curr[,3])
-    probs.curr[,4]<-pmin(1-probs.min,probs.curr[,4])
     probs.curr[,4]<-pmax(probs.min,probs.curr[,4])
+    norms<-apply(probs.curr,1,sum)
+    probs.curr<-probs.curr/norms
     
     w.curr<-cbind(T1/probs.curr[,1] + T2/probs.curr[,2] - T3/probs.curr[,3] - T4/probs.curr[,4],
                   T1/probs.curr[,1] - T2/probs.curr[,2] - T3/probs.curr[,3] + T4/probs.curr[,4],
@@ -594,14 +577,12 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
                    exp(X%*%mcoef[,2])/(1+exp(X%*%mcoef[,1])+exp(X%*%mcoef[,2])+exp(X%*%mcoef[,3])),
                    exp(X%*%mcoef[,3])/(1+exp(X%*%mcoef[,1])+exp(X%*%mcoef[,2])+exp(X%*%mcoef[,3])))
   colnames(probs.mnl)<-c("p1","p2","p3","p4")
-  probs.mnl[,1]<-pmin(1-probs.min,probs.mnl[,1])
   probs.mnl[,1]<-pmax(probs.min,probs.mnl[,1])
-  probs.mnl[,2]<-pmin(1-probs.min,probs.mnl[,2])
   probs.mnl[,2]<-pmax(probs.min,probs.mnl[,2])
-  probs.mnl[,3]<-pmin(1-probs.min,probs.mnl[,3])
   probs.mnl[,3]<-pmax(probs.min,probs.mnl[,3])
-  probs.mnl[,4]<-pmin(1-probs.min,probs.mnl[,4])
   probs.mnl[,4]<-pmax(probs.min,probs.mnl[,4])
+  norms<-apply(probs.mnl,1,sum)
+  probs.mnl<-probs.mnl/norms
   mnl1$fit<-matrix(probs.mnl,nrow=n,ncol=no.treats)
   beta.curr<-mcoef
   beta.curr[is.na(beta.curr)]<-0
@@ -684,14 +665,12 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   theta.opt<-X%*%beta.opt
   baseline.prob<-apply(theta.opt,1,function(x) (1+sum(exp(x)))^-1)
   probs.opt<-cbind(baseline.prob, exp(theta.opt[,1])*baseline.prob, exp(theta.opt[,2])*baseline.prob, exp(theta.opt[,3])*baseline.prob)
-  probs.opt[,1]<-pmin(1-probs.min,probs.opt[,1])
   probs.opt[,1]<-pmax(probs.min,probs.opt[,1])
-  probs.opt[,2]<-pmin(1-probs.min,probs.opt[,2])
   probs.opt[,2]<-pmax(probs.min,probs.opt[,2])
-  probs.opt[,3]<-pmin(1-probs.min,probs.opt[,3])
   probs.opt[,3]<-pmax(probs.min,probs.opt[,3])
-  probs.opt[,4]<-pmin(1-probs.min,probs.opt[,4])
   probs.opt[,4]<-pmax(probs.min,probs.opt[,4])
+  norms<-apply(probs.opt,1,sum)
+  probs.opt<-probs.opt/norms
   
   J.opt<-ifelse(twostep, gmm.func(beta.opt, invV = this.invV)$loss, gmm.func(beta.opt)$loss)
   
@@ -767,9 +746,8 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
   
   class(beta.opt) <- "coef"
   
-  output<-list("coefficients"=beta.opt,"residuals"=residuals,"fitted.values"=probs.opt,"rank"=k,"family"="CBPS",
-               "deviance"=deviance,"weights"=w, "y"=treat,"x"=X,"model"=NA,"converged"=opt1$conv,
-               "data"=data, "J"=J.opt,"df"=k,"var"=vcov, "bal"=bal.loss(beta.opt), "mle.bal"=bal.loss(mcoef),  
+  output<-list("coefficients"=beta.opt,"fitted.values"=probs.opt,"deviance"=deviance,"weights"=w, 
+               "y"=treat,"x"=X,"converged"=opt1$conv,"J"=J.opt,"var"=vcov,   
                "mle.J"=ifelse(twostep, gmm.func(mcoef, invV = this.invV)$loss, gmm.loss(mcoef)))
   
   class(output)<- c("CBPS")

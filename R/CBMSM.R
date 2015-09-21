@@ -27,6 +27,21 @@ CBMSM<-function(formula, id, time, data, type="MSM", twostep = TRUE, msm.varianc
   X <- if (!is.empty.model(mt)) model.matrix(mt, mf)#[,-2]
   else matrix(, NROW(Y), 0L)
   
+  
+  ##Format treatment matrix
+     	id<-as.numeric(as.factor(id))
+		unique.id<-sort(unique(id))
+		treat.hist<-matrix(NA,nrow=length(unique.id),ncol=length(unique(time)))
+		colnames(treat.hist)<-sort(unique(time))
+		rownames(treat.hist)<-unique.id
+		for(i in 1:length(unique(unique.id))) for(j in sort(unique(time)))
+		{{
+		treat.hist[i,j]<-Y[id==unique.id[i] & time==j]
+		}}
+		#treat.hist.fac<-apply(treat.hist,1,function(x) paste(x, collapse="+"))
+		cm.treat<-rowSums(treat.hist)
+
+  
   if(type=="MSM")   {
     MultiBin.fit<-FALSE
   }
@@ -36,7 +51,7 @@ CBMSM<-function(formula, id, time, data, type="MSM", twostep = TRUE, msm.varianc
     X<-cbind(1,X[,apply(X,2,sd)>0])
     names.X<-c("Intercept",colnames(X)[-1])
   }
-  
+
   fit <- eval(call("CBMSM.fit", treat = Y, X = X, id = id, time=time, 
                    MultiBin.fit = MultiBin.fit, twostep = twostep, msm.variance = msm.variance,
                    time.vary = time.vary))    
@@ -49,8 +64,12 @@ CBMSM<-function(formula, id, time, data, type="MSM", twostep = TRUE, msm.varianc
   fit$time<-time
   fit$model<-mf
   fit$data<-data
+  fit$treat.hist<-treat.hist
+  fit$treat.cum<-rowSums(treat.hist)
+  fit$weights<-fit$weights[time==min(time)]
   fit
 }
+
 
 ########################
 ###Calls loss function
@@ -73,14 +92,15 @@ glm1<-glm(treat~X.mat,family="binomial")
 ##Make SVD matrix of covariates
 ##and matrix of treatment history
 ##################
-if(time.vary==FALSE){
+#if(time.vary==FALSE){
 X.svd<-X.mat
 X.svd<-apply(X.svd,2,FUN=function(x) (x-mean(x))/sd(x))
 #X.svd[,c(1,2,7)]<-X.svd[,c(1,2,7)]*10
 X.svd<-svd(X.svd)$u%*%diag(svd(X.svd)$d>0.0001)
 X.svd<-X.svd[,apply(X.svd,2,sd)>0]
 glm1<-glm(treat~X.svd,family="binomial")
-} else{
+if(time.vary==TRUE){
+#} else{
 X.svd<-NULL
 for(i in sort(unique(time))){
 	X.sub<-X.mat[time==i,]
@@ -97,9 +117,8 @@ for(i in 1:n.time){
 	glm.coefs<-cbind(glm.coefs, summary(glm(treat~X.svd, subset=(time==i)))$coef[,1])
 	}
 	glm.coefs[is.na(glm.coefs)]<-0
-	glm1$coef<-as.vector(glm.coefs)
+	glm1$coefficients<-as.vector(glm.coefs)
 }
-
 
 ##################
 ## Start optimization
@@ -107,7 +126,7 @@ for(i in 1:n.time){
 #Twostep  is true
 msm.loss1<-function(x,...) msm.loss.func(betas=x, X=cbind(1,X.svd), treat=treat, time=time,...)$loss
 glm.fit<-msm.loss.func(glm1$coef,X=cbind(1,X.svd),time=time,treat=treat,full.var=full.var,twostep=FALSE)
-
+#print(head(glm.fit$V))[,1:10]
 ##Twostep is true; full variance option is passed
 
 if(twostep==TRUE){
@@ -125,6 +144,7 @@ if(twostep==FALSE) {
 
 	msm.fit<-msm.loss.func(msm.opt$par,X=cbind(1,X.svd), treat=treat, time=time, full.var=full.var,Vcov.inv=Vcov.inv$V,bal.only=TRUE,twostep=FALSE)
 	}
+	
 ##################
 ## Calculate unconditional probs and treatment matrix
 ##################
@@ -157,14 +177,15 @@ for(i in 1:n.obs) {for(j in 1:n.obs) {
 ##Produce Weights
 ###########
 
-wts.out<-rep(uncond.probs.cand/msm.fit$pr,n.time)
+wts.out<-rep(uncond.probs.cand/msm.fit$pr,n.time)[time==1]
 probs.out<-msm.fit$pr
 uncond.probs<-uncond.probs.cand
 
-out<-list("weights"=wts.out,"fitted.values"=probs.out,"id"=id0[1:n.obs],"glm.g"=glm.fit$g.all,"msm.g"=msm.fit$g.all)
+out<-list("weights"=wts.out,"fitted.values"=probs.out,"id"=id0[1:n.obs],"glm.g"=glm.fit$g.all,"msm.g"=msm.fit$g.all,"glm.weights"=(uncond.probs/glm.fit$pr)[time==1])
 class(out)<-c("CBMSM","list")
 return(out)
 }
+
 
 ########################
 ###Loss function for MSM
@@ -319,20 +340,28 @@ balance.CBMSM<-function(object, ...)
       treat.hist[i,j]<-object$y[object$id== ids[i] & object$time==j]
     }
   }
+  
   treat.hist.fac<-apply(treat.hist,1,function(x) paste(x, collapse="+"))
   bal<-matrix(NA,nrow=(ncol(object$x)-1),ncol=length(unique(treat.hist.fac))*2)
   baseline<-matrix(NA,nrow=(ncol(object$x)-1),ncol=length(unique(treat.hist.fac))*2)
   cnames<-array()
-  
+    
   for (i in 1:length(unique(treat.hist.fac)))
   {
     for (j in 2:ncol(object$x))
     {
-      bal[j-1,i]<-sum((treat.hist.fac==unique(treat.hist.fac[i]))*object$x[which(object$time == times[1]),j]*object$w)/sum(object$w*(treat.hist.fac == unique(treat.hist.fac[i])))
-      bal[j-1,i+length(unique(treat.hist.fac))]<-bal[j-1,i]/sd(object$x[which(object$time == times[1]),j])
-      baseline[j-1,i]<-sum((treat.hist.fac==unique(treat.hist.fac[i]))*object$x[which(object$time == times[1]),j])/sum((treat.hist.fac == unique(treat.hist.fac[i])))
-      baseline[j-1,i+length(unique(treat.hist.fac))]<-baseline[j-1,i]/sd(object$x[which(object$time == times[1]),j])
+      bal[j-1,i]<-sum((treat.hist.fac==unique(treat.hist.fac)[i])*object$x[which(object$time == times[1]),j]*object$w)/sum(object$w*(treat.hist.fac == unique(treat.hist.fac)[i]))
+      #bal[j-1,i]<-sum((treat.hist.fac==unique(treat.hist.fac)[i])*object$x[,j]*object$w)/sum(object$w*(treat.hist.fac == unique(treat.hist.fac)[i]))
+      # print(c(j,i,bal[j-1,i]))
+      bal[j-1,i+length(unique(treat.hist.fac))]<-bal[j-1,i]/sd(object$w*object$x[which(object$time == times[1]),j])
+      #bal[j-1,i+length(unique(treat.hist.fac))]<-bal[j-1,i]/sd(object$w*object$x[,j])
+      baseline[j-1,i]<-sum((treat.hist.fac==unique(treat.hist.fac)[i])*object$x[which(object$time == times[1]),j]*object$glm.w)/sum(object$glm.w*(treat.hist.fac == unique(treat.hist.fac)[i]))
+      baseline[j-1,i+length(unique(treat.hist.fac))]<-bal[j-1,i]/sd(object$glm.w*object$x[which(object$time == times[1]),j])
+      #baseline[j-1,i]<-sum((treat.hist.fac==unique(treat.hist.fac)[i])*object$x[,j]*object$glm.w)/sum(object$glm.w*(treat.hist.fac == unique(treat.hist.fac)[i]))
+      #baseline[j-1,i+length(unique(treat.hist.fac))]<-bal[j-1,i]/sd(object$glm.w*object$x[,j])
     }
+    bal[is.na(bal)]<-0
+    baseline[is.na(baseline)]<-0
     cnames[i]<-paste0(unique(treat.hist.fac)[i],".mean")
     cnames[i+length(unique(treat.hist.fac))]<-paste0(unique(treat.hist.fac)[i],".std.mean")
   }
@@ -341,16 +370,17 @@ balance.CBMSM<-function(object, ...)
   rownames(bal)<-rnames
   colnames(baseline)<-cnames
   rownames(baseline)<-rnames
-  
-  list("Balanced"=bal, "Original"=baseline)
+  statbal<-sum((bal-bal[,1])*(bal!=0)^2)
+  statloh<-sum((baseline-baseline[,1])*(baseline!=0)^2)
+
+  list("Balanced"=bal, "Unweighted"=baseline, "StatBal")
 }
 
-plot.CBMSM<-function(x, covars = NULL, silent = TRUE, ...)
+plot.CBMSM<-function(x, covars = NULL, silent = TRUE, boxplot = FALSE, ...)
 {
-  par(pty="s")
   bal.out<-balance.CBMSM(x)
   bal<-bal.out$Balanced
-  baseline<-bal.out$Original
+  baseline<-bal.out$Unweighted
   no.treats<-ncol(bal)/2
   
   if (is.null(covars))
@@ -358,8 +388,12 @@ plot.CBMSM<-function(x, covars = NULL, silent = TRUE, ...)
     covars<-1:nrow(bal)
   }
   
+  covarlist<-c()
+  contrast<-c()
   bal.std.diff<-c()
   baseline.std.diff<-c()
+  
+  treat.hist.names<-sapply(colnames(bal)[1:no.treats],function(s) substr(s, 1, nchar(s)-5))  
   
   for (i in covars)
   {    
@@ -367,6 +401,8 @@ plot.CBMSM<-function(x, covars = NULL, silent = TRUE, ...)
     {
       for (k in (j+1):no.treats)
       {
+        covarlist<-c(covarlist, rownames(bal)[i])        
+        contrast<-c(contrast, paste(treat.hist.names[j],treat.hist.names[k],sep=":",collapse=""))
         bal.std.diff<-c(bal.std.diff,abs(bal[i,no.treats+j] - bal[i,no.treats+k]))
         baseline.std.diff<-c(baseline.std.diff,abs(baseline[i,no.treats+j] - baseline[i,no.treats+k]))
       }
@@ -374,9 +410,15 @@ plot.CBMSM<-function(x, covars = NULL, silent = TRUE, ...)
   }
     
   range.x<-range.y<-range(c(bal.std.diff,baseline.std.diff))
-  plot(x=baseline.std.diff,y=bal.std.diff,asp="1",xlim=range.x,ylim=range.y, 
-       xlab="Original Imbalance",ylab="CBMSM Imbalance")
-  par(pty="m")
-  abline(0,1)
-  if(!silent) return(list("x"=baseline.std.diff,"y"=bal.std.diff))
+  if (!boxplot){
+    plot(x=baseline.std.diff,y=bal.std.diff,asp="1",xlab="Unweighted Regression Imbalance",ylab="CBMSM Imbalance", 
+         xlim=range.x, ylim = range.y, main = "Difference in Standardized Means", ...)
+    abline(0,1)    
+  }
+  else{
+    boxplot(baseline.std.diff, bal.std.diff, horizontal = TRUE, yaxt = 'n', xlab = "Difference in Standardized Means", ...)
+    axis(side=2, at=c(1,2),c("CBMSM Weighted", "Unweighted"))
+  }
+
+  if(!silent) return(data.frame("Covariate" = covarlist, "Contrast"=contrast, "Unweighted"=baseline.std.diff, "Balanced"=bal.std.diff))
 }
