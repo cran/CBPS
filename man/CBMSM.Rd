@@ -47,10 +47,9 @@ Propensity Score.'' Journal of the Royal Statistical Society, Series B
 (Statistical
 Methodology). \url{http://imai.princeton.edu/research/CBPS.html}
 	
-Imai, Kosuke and Marc Ratkovic.  ``Robust Estimation of Inverse
+Imai, Kosuke and Marc Ratkovic.  2015.  ``Robust Estimation of Inverse
 Probability Weights for Marginal Structural Models.''  Journal of the
-American Statistical Association,
-Forthcoming. \url{http://imai.princeton.edu/research/MSM.html} 
+American Statistical Association. \url{http://imai.princeton.edu/research/MSM.html} 
 
 }
 

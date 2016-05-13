@@ -478,7 +478,6 @@ CBPS.4Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
             1/sum(n)*t(X)%*%(T4-probs.curr[,4]),
             w.curr.del)
     
-    # TYPO?  I have a double negative in there.
     dgbar<-rbind(cbind(1/sum(n)*(t(apply(t(X),1,function(x) -x*probs.curr[,2]*(1-probs.curr[,2]))))%*%X,
                        1/sum(n)*(t(apply(t(X),1,function(x) x*probs.curr[,2]*probs.curr[,3])))%*%X,
                        1/sum(n)*(t(apply(t(X),1,function(x) x*probs.curr[,2]*probs.curr[,4])))%*%X,

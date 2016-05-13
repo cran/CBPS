@@ -31,7 +31,7 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		w1
 	}
   
-  ##The gmm objective function--given a guess of beta, constructs the GMM J statistic.
+  ##The gmm objective function--given a guess of beta, constructs the GMM J statistic.  Used for vanilla binary treatments
 	gmm.func<-function(beta.curr,X.gmm=X,ATT.gmm=ATT,invV=NULL){
 		##Designate a few objects in the function.
 		X<-as.matrix(X.gmm)
@@ -92,6 +92,7 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 		out1<-list("loss"=max(loss1*n,loss1*n), "invV"=invV)
 		out1
 	}
+	
 	gmm.loss<-function(x,...) gmm.func(x,...)$loss
 	
 	##Loss function for balance constraints, returns the squared imbalance along each dimension.
@@ -268,23 +269,21 @@ CBPS.2Treat<-function(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterati
 	XG.1<- -X*(probs.opt)^.5*(1-probs.opt)^.5
 	XW.1<- X*(treat-probs.opt)
 	if(ATT==T){
-		XW.2<-X*(treat-probs.opt)/(1-probs.opt)*n/n.t
-		XG.2<-X*((1-treat)*probs.opt/(1-probs.opt)*n/n.t)^.5
+	  XW.2<-X*(treat-probs.opt)/(1-probs.opt)*n/n.t
+	  XG.2<-X*((1-treat)*probs.opt/(1-probs.opt)*n/n.t)^.5
 	} 
 	else{
-		XW.2<- X*(probs.opt-1+treat)^-1
-		XG.2<- -X*probs.opt^.5*(1-probs.opt)^.5*abs((probs.opt-1+treat)^-1)#*(abs(probs.opt-treat)/(probs.opt*(1-probs.opt)))^.5
+	  XW.2<- X*(probs.opt-1+treat)^-1
+	  XG.2<- -X*probs.opt^.5*(1-probs.opt)^.5*abs((probs.opt-1+treat)^-1)#*(abs(probs.opt-treat)/(probs.opt*(1-probs.opt)))^.5
+  }
+	if (twostep){
+	  W<-this.invV
 	}
-	if (twostep)
-	{
-		W<-this.invV
+	else{
+	    W<-gmm.func(beta.opt)$invV
 	}
-	else
-	{
-		W<-gmm.func(beta.opt)$invV
-	}
-  	W1<-rbind(t(XW.1),t(XW.2))
-  	Omega<-(W1%*%t(W1)/n)
+	W1<-rbind(t(XW.1),t(XW.2))
+	Omega<-(W1%*%t(W1)/n)
 	G<-cbind(t(XG.1)%*%XG.1,t(XG.2)%*%XG.2)/n
 	vcov<-ginv(G%*%W%*%t(G))%*%G%*%W%*%Omega%*%W%*%t(G)%*%ginv(G%*%W%*%t(G))
 

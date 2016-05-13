@@ -1,19 +1,19 @@
 CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRUE, twostep = TRUE) {
-  probs.min<-10^-6
+  probs.min<-10^-4
   
   k<-0
   
   score.only<-bal.only<-FALSE
   if(method=="mle") score.only<-TRUE
   if(method=="exact") bal.only<-TRUE
-                       
+  
+  X<-as.matrix(X)
   X<-cbind(1,X[,apply(X,2,sd)>0])
   names.X<-colnames(X)
   names.X[apply(X,2,sd)==0]<-"(Intercept)"
   
   #######Declare some constants and orthogonalize Xdf.
   X.orig<-X
-  format.bal<-F
   x.sd<-apply(as.matrix(X[,-1]),2,sd)
   Dx.inv<-diag(c(1,x.sd))
   diag(Dx.inv)<-1
@@ -21,10 +21,10 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
   X[,-1]<-apply(as.matrix(X[,-1]),2,FUN=function(x) (x-mean(x))/sd(x))
   if(k==0) k<-sum(diag(t(X)%*%X%*%ginv(t(X)%*%X)))
   k<-floor(k+.1)
-  svd1<-svd(X)
-  X<-svd1$u[,1:k]
+  #svd1<-svd(X)
+  #X<-svd1$u[,1:k]
   XprimeX.inv<-ginv(t(X)%*%X)
-  
+    
   if (is.null(iterations)) iterations<-1000
   n<-length(Tr)
   
@@ -38,6 +38,10 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
     probs.curr.c<-pmin(pmax(exp(X%*%beta.curr.c)*baseline.prob,probs.min),1-probs.min)
     probs.curr.a<-pmin(pmax(exp(X%*%beta.curr.a)*baseline.prob,probs.min),1-probs.min)
     probs.curr.n<-pmin(pmax(baseline.prob,probs.min),1-probs.min)
+
+    probs.curr.c<-exp(X%*%beta.curr.c)*baseline.prob
+    probs.curr.a<-exp(X%*%beta.curr.a)*baseline.prob
+    probs.curr.n<-baseline.prob
     
     sums<-probs.curr.c+probs.curr.a+probs.curr.n
     probs.curr.c<-probs.curr.c/sums
@@ -52,18 +56,18 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
     w.curr.del<-as.matrix(w.curr.del)
     w.curr<-as.matrix(w.curr)
     
-    gbar<-c(1/n*t(X)%*%((Z*Tr/(probs.curr.c + probs.curr.a) + (1-Z)*(1-Tr)/(1 - probs.curr.a) - 1)*probs.curr.c),
-            1/n*t(X)%*%((Z*Tr/(probs.curr.c + probs.curr.a) + (1-Z)*Tr/probs.curr.a - 1)*probs.curr.a),
+    gbar<-c(1/n*t(X)%*%((Z*Tr/(1-probs.curr.n) + (1-Z)*(1-Tr)/(1-probs.curr.a) - 1)*probs.curr.c),
+            1/n*t(X)%*%((Z*Tr/(1-probs.curr.n) + (1-Z)*Tr/probs.curr.a - 1)*probs.curr.a),
             w.curr.del)
     
     if (is.null(invV))
     {
-      X.1.1<-X*as.vector((pZ/(probs.curr.c + probs.curr.a) + (1 - pZ)/(1 - probs.curr.a) - 1)*probs.curr.c^2)
+      X.1.1<-X*as.vector((pZ*probs.curr.n^2/(1-probs.curr.n) + pZ*probs.curr.n + (1-pZ)*probs.curr.a + (1-pZ)*probs.curr.a^2/(1-probs.curr.a))*probs.curr.c^2)
       X.1.2<-X*as.vector((pZ/(probs.curr.c + probs.curr.a) - 1)*probs.curr.a*probs.curr.c)
       X.1.3<-X*as.vector(probs.curr.c*((probs.curr.c+probs.curr.a)^-1 - (1-probs.curr.a)^-1))
       X.1.4<-X*as.vector(probs.curr.c*((probs.curr.c+probs.curr.a)^-1 - (1-probs.curr.a)^-1))
       X.1.5<-X*as.vector(probs.curr.c*((probs.curr.c+probs.curr.a)^-1 + (1-probs.curr.a)^-1))
-      X.2.2<-X*as.vector((pZ/(probs.curr.c + probs.curr.a) + (1 - pZ)/probs.curr.a - 1)*probs.curr.a^2)
+      X.2.2<-X*as.vector((pZ*probs.curr.n^2/(1-probs.curr.n) + pZ*probs.curr.n + (1-pZ)*(1-probs.curr.a)^2/probs.curr.a + (1-pZ)*(1-probs.curr.a))*probs.curr.a^2)
       X.2.3<-X*as.vector(probs.curr.a*((probs.curr.c + probs.curr.a)^-1 + probs.curr.a^-1))
       X.2.4<-X*as.vector(probs.curr.a*((probs.curr.c + probs.curr.a)^-1 - probs.curr.a^-1))
       X.2.5<-X*as.vector(probs.curr.a*((probs.curr.c + probs.curr.a)^-1 - probs.curr.a^-1))
@@ -74,11 +78,11 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
       X.4.5<-X*as.vector((pZ*(probs.curr.c + probs.curr.a))^-1 - (pZ*probs.curr.n)^-1 + ((1-pZ)*probs.curr.a)^-1 - ((1-pZ)*(1-probs.curr.a))^-1)
       X.5.5<-X*as.vector((pZ*(probs.curr.c + probs.curr.a))^-1 + (pZ*probs.curr.n)^-1 + ((1-pZ)*probs.curr.a)^-1 + ((1-pZ)*(1-probs.curr.a))^-1)
       
-      V<-1/n*rbind(cbind(t(X.1.1)%*%X.1.1, t(X.1.2)%*%X.1.2, t(X.1.3)%*%X.1.3, t(X.1.4)%*%X.1.4, t(X.1.5)%*%X.1.5),
-                   cbind(t(X.1.2)%*%X.1.2, t(X.2.2)%*%X.2.2, t(X.2.3)%*%X.2.3, t(X.2.4)%*%X.2.4, t(X.2.5)%*%X.2.5),
-                   cbind(t(X.1.3)%*%X.1.3, t(X.2.3)%*%X.2.3, t(X.3.3)%*%X.3.3, t(X.3.4)%*%X.3.4, t(X.3.5)%*%X.3.5),
-                   cbind(t(X.1.4)%*%X.1.4, t(X.2.4)%*%X.2.4, t(X.3.4)%*%X.3.4, t(X.4.4)%*%X.4.4, t(X.4.5)%*%X.4.5),
-                   cbind(t(X.1.5)%*%X.1.5, t(X.2.5)%*%X.2.5, t(X.3.5)%*%X.3.4, t(X.4.5)%*%X.4.5, t(X.5.5)%*%X.5.5))
+      V<-1/n*rbind(cbind(t(X.1.1)%*%X, t(X.1.2)%*%X, t(X.1.3)%*%X, t(X.1.4)%*%X, t(X.1.5)%*%X),
+                   cbind(t(X.1.2)%*%X, t(X.2.2)%*%X, t(X.2.3)%*%X, t(X.2.4)%*%X, t(X.2.5)%*%X),
+                   cbind(t(X.1.3)%*%X, t(X.2.3)%*%X, t(X.3.3)%*%X, t(X.3.4)%*%X, t(X.3.5)%*%X),
+                   cbind(t(X.1.4)%*%X, t(X.2.4)%*%X, t(X.3.4)%*%X, t(X.4.4)%*%X, t(X.4.5)%*%X),
+                   cbind(t(X.1.5)%*%X, t(X.2.5)%*%X, t(X.3.5)%*%X, t(X.4.5)%*%X, t(X.5.5)%*%X))
       invV<-ginv(V)
     }
         
@@ -113,8 +117,8 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
     w.curr.del<-as.matrix(w.curr.del)
     w.curr<-as.matrix(w.curr)
     
-    gbar<-c(1/n*t(X)%*%((Z*Tr/(probs.curr.c + probs.curr.a) + (1-Z)*(1-Tr)/(1 - probs.curr.a) - 1)*probs.curr.c),
-            1/n*t(X)%*%((Z*Tr/(probs.curr.c + probs.curr.a) + (1-Z)*Tr/probs.curr.a - 1)*probs.curr.a),
+    gbar<-c(1/n*t(X)%*%((Z*Tr*probs.curr.n/(probs.curr.c+probs.curr.a) - Z*(1-Tr) - (1-Z)*Tr + (1-Z)*(1-Tr)*probs.curr.a/(1-probs.curr.a))*probs.curr.c),
+            1/n*t(X)%*%((Z*Tr*probs.curr.n/(probs.curr.c+probs.curr.a) - Z*(1-Tr) + (1-Z)*Tr*(1-probs.curr.a)/probs.curr.a - (1-Z)*(1-Tr))*probs.curr.a),
             w.curr.del)
     
     Ac<- -probs.curr.c*probs.curr.n/(probs.curr.c + probs.curr.a)^2
@@ -167,7 +171,7 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
     probs.curr.a<-probs.curr.a/sums
     probs.curr.n<-probs.curr.n/sums
     
-    loss<-1/n*sum(Z*Tr*log(probs.curr.c+probs.curr.a) + Z*(1-Tr)*log(probs.curr.n) + (1-Z)*Tr*log(probs.curr.a) + (1-Z)*(1-Tr)*log(1-probs.curr.a))
+    loss<- -sum(Z*Tr*log(probs.curr.c+probs.curr.a) + Z*(1-Tr)*log(probs.curr.n) + (1-Z)*Tr*log(probs.curr.a) + (1-Z)*(1-Tr)*log(1-probs.curr.a))
     loss
   }
   
@@ -187,8 +191,8 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
     probs.curr.a<-probs.curr.a/sums
     probs.curr.n<-probs.curr.n/sums
     
-    ds<-1/n*c(t(X)%*%((Z*Tr/(probs.curr.c + probs.curr.a) + (1-Z)*(1-Tr)/(1 - probs.curr.a) - 1)*probs.curr.c),
-              t(X)%*%((Z*Tr/(probs.curr.c + probs.curr.a) + (1-Z)*Tr/probs.curr.a - 1)*probs.curr.a))
+    ds<- -c(t(X)%*%((Z*Tr/(probs.curr.c + probs.curr.a) + (1-Z)*(1-Tr)/(1 - probs.curr.a) - 1)*probs.curr.c),
+            t(X)%*%((Z*Tr/(probs.curr.c + probs.curr.a) + (1-Z)*Tr/probs.curr.a - 1)*probs.curr.a))
     ds
   }
   
@@ -264,23 +268,73 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
     out
   }
   
+  bal2.loss <- function(beta.curr, invV = NULL)
+  {
+    beta.curr.c<-beta.curr[1:k]
+    beta.curr.a<-beta.curr[k+(1:k)]
+    
+    baseline.prob<-(1 + exp(X%*%beta.curr.c) + exp(X%*%beta.curr.a))^-1
+    
+    probs.curr.c<-pmin(pmax(exp(X%*%beta.curr.c)*baseline.prob,probs.min),1-probs.min)
+    probs.curr.a<-pmin(pmax(exp(X%*%beta.curr.a)*baseline.prob,probs.min),1-probs.min)
+    probs.curr.n<-pmin(pmax(baseline.prob,probs.min),1-probs.min)
+    
+    probs.curr.c<-exp(X%*%beta.curr.c)*baseline.prob
+    probs.curr.a<-exp(X%*%beta.curr.a)*baseline.prob
+    probs.curr.n<-baseline.prob
+    
+    sums<-probs.curr.c+probs.curr.a+probs.curr.n
+    probs.curr.c<-probs.curr.c/sums
+    probs.curr.a<-probs.curr.a/sums
+    probs.curr.n<-probs.curr.n/sums
+    
+    w.curr<-cbind(Z*Tr/(pZ*(probs.curr.c + probs.curr.a)) + (1-Z)*Tr/((1-pZ)*probs.curr.a) - Z*(1-Tr)/(pZ*probs.curr.n) - (1-Z)*(1-Tr)/((1-pZ)*(probs.curr.c + probs.curr.n)),
+                  Z*Tr/(pZ*(probs.curr.c + probs.curr.a)) - (1-Z)*Tr/((1-pZ)*probs.curr.a) + Z*(1-Tr)/(pZ*probs.curr.n) - (1-Z)*(1-Tr)/((1-pZ)*(probs.curr.c + probs.curr.n)),
+                  Z*Tr/(pZ*(probs.curr.c + probs.curr.a)) - (1-Z)*Tr/((1-pZ)*probs.curr.a) - Z*(1-Tr)/(pZ*probs.curr.n) + (1-Z)*(1-Tr)/((1-pZ)*(probs.curr.c + probs.curr.n)))
+    
+    w.curr.del<-1/n*t(X)%*%w.curr
+    w.curr.del<-as.matrix(w.curr.del)
+    w.curr<-as.matrix(w.curr)
+    
+    gbar<-c(w.curr.del)
+    
+    if (is.null(invV))
+    {
+      
+      X.3.3<-X*as.vector((pZ*(probs.curr.c + probs.curr.a))^-1 + (pZ*probs.curr.n)^-1 + ((1-pZ)*probs.curr.a)^-1 + ((1-pZ)*(1-probs.curr.a))^-1)
+      X.3.4<-X*as.vector((pZ*(probs.curr.c + probs.curr.a))^-1 - (pZ*probs.curr.n)^-1 - ((1-pZ)*probs.curr.a)^-1 + ((1-pZ)*(1-probs.curr.a))^-1)
+      X.3.5<-X*as.vector((pZ*(probs.curr.c + probs.curr.a))^-1 + (pZ*probs.curr.n)^-1 - ((1-pZ)*probs.curr.a)^-1 - ((1-pZ)*(1-probs.curr.a))^-1)
+      X.4.4<-X*as.vector((pZ*(probs.curr.c + probs.curr.a))^-1 + (pZ*probs.curr.n)^-1 + ((1-pZ)*probs.curr.a)^-1 + ((1-pZ)*(1-probs.curr.a))^-1)
+      X.4.5<-X*as.vector((pZ*(probs.curr.c + probs.curr.a))^-1 - (pZ*probs.curr.n)^-1 + ((1-pZ)*probs.curr.a)^-1 - ((1-pZ)*(1-probs.curr.a))^-1)
+      X.5.5<-X*as.vector((pZ*(probs.curr.c + probs.curr.a))^-1 + (pZ*probs.curr.n)^-1 + ((1-pZ)*probs.curr.a)^-1 + ((1-pZ)*(1-probs.curr.a))^-1)
+      
+      V<-1/n*rbind(cbind(t(X.3.3)%*%X, t(X.3.4)%*%X, t(X.3.5)%*%X),
+                   cbind(t(X.3.4)%*%X, t(X.4.4)%*%X, t(X.4.5)%*%X),
+                   cbind(t(X.3.5)%*%X, t(X.4.5)%*%X, t(X.5.5)%*%X))
+      invV<-ginv(V)
+    }
+    else{
+      invV <- invV[(2*k+1):ncol(invV),(2*k+1):ncol(invV)]
+    }
+    
+    return(as.vector(t(gbar)%*%invV%*%(gbar)))
+  }
+  
   beta.init<-rep(0,2*k)
   mle.opt<-optim(beta.init, mle.loss, control=list("maxit"=iterations), method = "BFGS", gr = mle.gradient)
   beta.mle<-mle.opt$par
-    
+  
+  this.invV<-gmm.func(beta.mle)$invV
+  
   if (score.only)   gmm.opt<-mle.opt
   else {
+    #Balance highly sensitive to the starting point
     bal.opt<-optim(beta.mle, bal.loss, control=list("maxit"=iterations), method = "BFGS", gr = bal.gradient)
     beta.bal<-bal.opt$par
     
-    #print(bal.gradient(beta.bal))
-    #print(grad(bal.loss,beta.bal))
-    
-    this.invV<-gmm.func(beta.mle)$invV
-    
     if (bal.only) gmm.opt<-bal.opt
     else {
-      gmm.mle.opt<-optim(beta.mle, gmm.loss, control=list("maxit"=iterations), method = "BFGS", invV = this.invV, gr = gmm.gradient)
+      gmm.mle.opt<-optim(beta.mle, gmm.loss, control=list("maxit"=iterations), method = "BFGS", invV = this.invV, gr = gmm.gradient)      
       gmm.bal.opt<-optim(beta.bal, gmm.loss, control=list("maxit"=iterations), method = "BFGS", invV = this.invV, gr = gmm.gradient)      
       if (gmm.mle.opt$value > gmm.bal.opt$value)
       {
@@ -289,16 +343,22 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
       else
       {
         gmm.opt<-gmm.mle.opt
-      }
-      
-      #print(gmm.gradient(gmm.opt$par, invV=this.invV))
-      #print(grad(function(x) gmm.loss(x, invV=this.invV),gmm.opt$par))
+      }    
     }
   }
-
-  #print(gmm.opt$par)
-  J.opt<-matrix(gmm.opt$val)
-  beta.opt<-matrix(gmm.opt$par,nrow=k)
+  
+  if (!bal.only & (bal2.loss(beta.mle, invV = this.invV) < bal2.loss(gmm.opt$par, invV = this.invV))){
+    warning("CBIV fails to improve covariate balance relative to MLE.  \n MLE loss:    ", 
+            bal2.loss(beta.mle, invV = this.invV), "\n CBIV loss:  ", 
+            bal2.loss(gmm.opt$par, invV = this.invV), "\n")
+    J.opt<-matrix(gmm.loss(beta.mle))
+    beta.opt<-matrix(beta.mle, nrow=k)
+  }
+  else{
+    J.opt<-matrix(gmm.opt$val)
+    beta.opt<-matrix(gmm.opt$par,nrow=k)
+  }
+  
   class(beta.opt)<-"coef"
   
   baseline<-(1+exp(X%*%beta.opt[,1])+exp(X%*%beta.opt[,2]))^-1
@@ -309,15 +369,15 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
   fitted.values[,2]<-fitted.values[,2]/sums
   fitted.values[,3]<-fitted.values[,3]/sums
   colnames(fitted.values)<-c("Compliers","Always","Never")  
-  
-  d.inv<- svd1$d
-  d.inv[d.inv> 1e-5]<-1/d.inv[d.inv> 1e-5]
-  d.inv[d.inv<= 1e-5]<-0
-  beta.opt<-svd1$v%*%diag(d.inv)%*%beta.opt
+    
+  #d.inv<-svd1$d
+  #d.inv[d.inv> 1e-5]<-1/d.inv[d.inv> 1e-5]
+  #d.inv[d.inv<= 1e-5]<-0
+  #beta.opt<-svd1$v%*%diag(d.inv)%*%beta.opt
   beta.opt[-1,]<-beta.opt[-1,]/x.sd
   
   deviance<- -2*sum(Z*Tr*log(fitted.values[,1]+fitted.values[,2]) + Z*(1-Tr)*log(fitted.values[,3]) + (1-Z)*Tr*log(fitted.values[,2]) + (1-Z)*(1-Tr)*log(1-fitted.values[,2]))
-  
+    
   if (k > 2)
   {
     beta.opt[1,]<-beta.opt[1,]-matrix(x.mean%*%beta.opt[-1,])
@@ -326,10 +386,10 @@ CBIV <- function(Tr, Z, X, pZ, method="over", iterations=NULL, standardize = TRU
   {
     beta.opt[1,]<-beta.opt[1,]-x.mean*beta.opt[-1,]
   }
-
+  
   output<-list("coefficients"=beta.opt,"fitted.values"=X%*%beta.opt,"rank"=k,
                "deviance"=deviance,"converged"=gmm.opt$conv,"J"=J.opt,"df"=k,
-               "bal"=bal.loss(beta.opt))
+               "bal"=bal2.loss(beta.opt))
   class(output)<-"CBIV"
   output
 }

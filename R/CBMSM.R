@@ -181,6 +181,13 @@ wts.out<-rep(uncond.probs.cand/msm.fit$pr,n.time)[time==1]
 probs.out<-msm.fit$pr
 uncond.probs<-uncond.probs.cand
 
+loss.glm<-glm.fit$loss
+loss.msm<-msm.fit$loss
+
+if(loss.glm<loss.msm){
+	warning("CBMSM fails to improve covariate balance relative to MLE.  \n GLM loss:    ", glm.fit$loss, "\n CBMSM loss:  ", msm.fit$loss, "\n")
+}
+
 out<-list("weights"=wts.out,"fitted.values"=probs.out,"id"=id0[1:n.obs],"glm.g"=glm.fit$g.all,"msm.g"=msm.fit$g.all,"glm.weights"=(uncond.probs/glm.fit$pr)[time==1])
 class(out)<-c("CBMSM","list")
 return(out)

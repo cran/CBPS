@@ -8,8 +8,9 @@
 For cross-sectional data, the method can take continuous treatments and treatments with a control (baseline) condition and either 1, 2, or 3 distinct treatment conditions.}
 \usage{
 	  CBPS(formula, data, na.action, ATT = 1, iterations = 1000, 
-	       standardize = TRUE, method = "over", twostep = TRUE, ...)
-	  CBPS.fit(treat, X, ATT, method, iterations, 
+	       standardize = TRUE, method = "over", twostep = TRUE, 
+		   baseline.formula = NULL, diff.formula = NULL, ...)
+	  CBPS.fit(treat, X, baselineX, diffX, ATT, method, iterations, 
 			   standardize, twostep, ...)
 }
 \arguments{
@@ -22,8 +23,12 @@ For cross-sectional data, the method can take continuous treatments and treatmen
   \item{method}{Choose "over" to fit an over-identified model that combines the propensity score and covariate balancing conditions; choose "exact" to fit a model that only contains the covariate balancing conditions.}
   \item{twostep}{Default is \code{TRUE} for a two-step estimator, which will run substantially faster than continuous-updating.  Set to \code{FALSE} to use the continuous-updating estimator described by Imai and Ratkovic (2014).}
   \item{treat}{A vector of treatment assignments.  Binary or multi-valued treatments should be factors.  Continuous treatments should be numeric.}
-  \item{X}{A covariate matrix.}  
-  \item{...}{Other parameters to be passed through to \code{optim()}}
+  \item{X}{A covariate matrix.} 
+  \item{baseline.formula}{Used only to fit CBPSOptimal (see Fan et al). Currently only works with binary treatments.  A formula specifying the balancing covariates in the baseline outcome model. Namely h_1(). Eg. ~X2+X4 means X_2 and X_4 are the baseline outcome model covariates.}
+  \item{diff.formula}{Used only to fit CBPSOptimal (see Fan et al).  Currently only works with binary treatments.  A formula specifying the balancing covariates in the difference between the treatment and baseline outcome model.Namely h_2().Eg.~X1+X3 means X_1 and X_3 are covariates in the difference between the treatment and baseline outcome models.}
+  \item{baselineX}{Similar to \code{baseline.formula}, but in matrix form.}
+  \item{diffX}{Similar to \code{diff.formula}, but in matrix form.}
+  \item{...}{Other parameters to be passed through to \code{optim()}.}
 }
 \details{Fits covariate balancing propensity scores.}
 \value{
@@ -44,9 +49,9 @@ For cross-sectional data, the method can take continuous treatments and treatmen
   \item{var}{The covariance matrix, evaluated numerically from \code{optim()}.}
  }
 \references{Imai, Kosuke and Marc Ratkovic.  2014. ``Covariate Balancing Propensity Score.'' Journal of the Royal Statistical Society, Series B (Statistical Methodology). \url{http://imai.princeton.edu/research/CBPS.html}			\cr
-			Fong, Christian, Chad Hazlett, and Kosuke Imai.  ``Parametric and Nonparametric Covariate Balancing Propensity Score for General Treatment Regimes.''  Unpublished Manuscript. \url{http://imai.princeton.edu/research/files/CBGPS.pdf}
-			}
-\author{Christian Fong, Marc Ratkovic, and Kosuke Imai; The CBPS function is based on the code for version 2.15.0 of the glm function implemented in the stats package, originally written by Simon Davies.  This documentation is likewise modeled on the documentation for glm and borrows its language where the arguments and values are the same.}
+			Fong, Christian, Chad Hazlett, and Kosuke Imai.  ``Parametric and Nonparametric Covariate Balancing Propensity Score for General Treatment Regimes.''  Unpublished Manuscript. \url{http://imai.princeton.edu/research/files/CBGPS.pdf}	\cr
+			Fan, Jianqing and Imai, Kosuke and Liu, Han and Ning, Yang and Yang, Xiaolin. ``Improving Covariate Balancing Propensity Score: A Doubly Robust and Efficient Approach.'' Unpublished Manuscript.}
+\author{Christian Fong, Marc Ratkovic, Kosuke Imai, and Xiaolin Yang; The CBPS function is based on the code for version 2.15.0 of the glm function implemented in the stats package, originally written by Simon Davies.  This documentation is likewise modeled on the documentation for glm and borrows its language where the arguments and values are the same.}
 
 
 \seealso{\link{summary.CBPS}}
@@ -101,7 +106,7 @@ treat <- cbind(1,X)\%*\%beta + rnorm(n, sd = 5)
 
 treat.effect <- 1
 effect.beta <- rnorm(ncol(X))
-y <- rbinom(n, 1, (1 + exp(mean(treat.effect*treat + X\%*\%effect.beta))^-1)
+y <- rbinom(n, 1, (1 + exp(mean(-treat.effect*treat - X\%*\%effect.beta)))^-1)
 
 fit2 <- CBPS(treat ~ X)
 summary(fit2)
@@ -109,5 +114,18 @@ summary(glm(y ~ treat + X, weights = fit2$weights, family = "quasibinomial"))
 
 rm(list=c("n","X","beta","treat","treat.effect","effect.beta","y","fit2"))
 
+### Example: Improved CBPS from Fan et al
+set.seed(123456)
+n <- 500
+X <- mvrnorm(n, mu = rep(0, 4), Sigma = diag(4))
+prop <- 1 / (1 + exp(X[,1] - 0.5 * X[,2] + 0.25*X[,3] + 0.1 * X[,4]))
+treat <- rbinom(n, 1, prop)
+y1 <- 210 + 27.4*X[,1] + 13.7*X[,2] + 13.7*X[,3] + 13.7*X[,4] + rnorm(n)
+y0 <- 210 + 13.7*X[,2] + 13.7*X[,3] + 13.7*X[,4] + rnorm(n)
+##Estimate CBPS with a misspecificied model
+X.mis <- cbind(exp(X[,1]/2), X[,2]*(1+exp(X[,1]))^(-1)+10, (X[,1]*X[,3]/25+.6)^3, 
+               (X[,2]+X[,4]+20)^2)
+fit1 <- CBPS(treat ~ X.mis,baseline.formula=~X.mis[,2:4],diff.formula=~X.mis[,1], ATT = FALSE)
+summary(fit1)
 }
 }
