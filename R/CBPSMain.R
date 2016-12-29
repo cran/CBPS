@@ -4,7 +4,7 @@
 #-----------------------------------------------------------------
 
 # CBPS parses the formula object and passes the result to CBPS.fit
-CBPS <- function(formula, data, na.action, ATT=1, iterations=1000, standardize=TRUE, method="over", twostep=TRUE, 
+CBPS <- function(formula, data, na.action, ATT=1, iterations=1000, standardize=TRUE, method="over", twostep=TRUE,
                  baseline.formula=NULL, diff.formula=NULL, ...) {
   if (missing(data)) 
     data <- environment(formula)
@@ -33,28 +33,26 @@ CBPS <- function(formula, data, na.action, ATT=1, iterations=1000, standardize=T
   X<-cbind(1,X[,apply(X,2,sd)>0])
   
   # Parse formulae 2 and 3, if they are necessary
+  if (xor(is.null(baseline.formula), is.null(diff.formula))){
+    stop("Either baseline.formula or diff.formula not specified.  Both must be specified to use CBPSOptimal.  Otherwise, leave both NULL.")
+  }
   if(!is.null(baseline.formula))
   {	
     baselineX<-model.matrix(terms(baseline.formula))
     baselineX<-baselineX[,apply(baselineX,2,sd)>0]
-  }
-  else
-  {
-    baselineX <- NULL
-  }
-  if(!is.null(diff.formula))
-  {
     diffX<- model.matrix(terms(diff.formula))
     diffX<-diffX[,apply(as.matrix(diffX),2,sd)>0]
   }
   else
   {
+    baselineX <- NULL
     diffX <- NULL
   }
   
   fit <- eval(call("CBPS.fit", X = X, treat = Y, ATT=ATT, 
                    intercept = attr(mt, "intercept") > 0L, method=method, iterations=iterations, 
-                   standardize = standardize, twostep = twostep, baselineX = baselineX, diffX = diffX))	
+                   standardize = standardize, twostep = twostep, 
+                   baselineX = baselineX, diffX = diffX))	
   
   fit$na.action <- attr(mf, "na.action")
   xlevels <- .getXlevels(mt, mf)
@@ -80,28 +78,31 @@ CBPS.fit<-function(treat, X, baselineX, diffX, ATT, method, iterations, standard
   k=0
   if(method=="over") bal.only=FALSE
   if(method=="exact") bal.only=TRUE
-  X.bal<-X
-  
+
   names.X<-colnames(X)
   names.X[apply(X,2,sd)==0]<-"(Intercept)"
-  
+
+  # Only preprocess if not doing CBPS Optimal
   X.orig<-X
-  x.sd<-apply(as.matrix(X[,-1]),2,sd)
-  Dx.inv<-diag(c(1,x.sd))
-  diag(Dx.inv)<-1
-  x.mean<-apply(as.matrix(X[,-1]),2,mean)
-  X[,-1]<-apply(as.matrix(X[,-1]),2,FUN=function(x) (x-mean(x))/sd(x))
-  k<-sum(diag(t(X)%*%X%*%ginv(t(X)%*%X)))
-  k<-floor(k+.1)
+  if(is.null(baselineX)){
+    x.sd<-apply(as.matrix(X[,-1]),2,sd)
+    Dx.inv<-diag(c(1,x.sd))
+    x.mean<-apply(as.matrix(X[,-1]),2,mean)
+    X[,-1]<-apply(as.matrix(X[,-1]),2,FUN=function(x) (x-mean(x))/sd(x))
+    svd1<-svd(X)
+    X<-svd1$u   
+  }
+  k<-qr(X)$rank
   if (k < ncol(X)) stop("X is not full rank")
-  svd1<-svd(X)
-  X<-svd1$u
+  
+  # When you take the svd, this is the identity matrix.  Perhaps
+  # we forgot to work this in somewhere
   XprimeX.inv<-ginv(t(X)%*%X)
   
   # Determine the number of treatments
   if (is.factor(treat)) {
     no.treats<-length(levels(treat))
-    if (no.treats > 4) stop("Parametric CBPS not defined for more than 4 treatment values.  Consider using a continuous value.")
+    if (no.treats > 4) stop("Parametric CBPS is not implemented for more than 4 treatment values.  Consider using a continuous value.")
     if (no.treats < 2) stop("Treatment must take more than one value")
     
     if (no.treats == 2)
@@ -110,44 +111,54 @@ CBPS.fit<-function(treat, X, baselineX, diffX, ATT, method, iterations, standard
       {
         if(ATT==1)
         {
-          message("Does not support ATT=1 now.Try ATT=0.")
+          message("CBPSOptimal does not support ATT=1 for now. Try ATT=0.")
         }
         output<-CBPSOptimal.2Treat(treat, X, baselineX, diffX, iterations, ATT=0, standardize = standardize)
       }
       else
       {
-        output<-CBPS.2Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, ATT, standardize = standardize, twostep = twostep)
+        output<-CBPS.2Treat(treat, X, method, k, XprimeX.inv, bal.only, iterations, ATT, standardize = standardize, twostep = twostep)
       }
     }
     
     if (no.treats == 3)
     {
-      output<-CBPS.3Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
+      output<-CBPS.3Treat(treat, X, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
     }
     
     if (no.treats == 4)
     {
-      output<-CBPS.4Treat(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
+      output<-CBPS.4Treat(treat, X, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
     }
     
     # Reverse the svd, centering and scaling
-    d.inv<- svd1$d
-    d.inv[d.inv> 1e-5]<-1/d.inv[d.inv> 1e-5]
-    d.inv[d.inv<= 1e-5]<-0
-    beta.opt<-svd1$v%*%diag(d.inv)%*%coef(output)
-    beta.opt[-1,]<-beta.opt[-1,]/x.sd
-    
-    beta.opt[1,]<-beta.opt[1,]-matrix(x.mean%*%beta.opt[-1,])
+    if (is.null(baselineX)){
+      d.inv<- svd1$d
+      d.inv[d.inv> 1e-5]<-1/d.inv[d.inv> 1e-5]
+      d.inv[d.inv<= 1e-5]<-0      
+      beta.opt<-svd1$v%*%diag(d.inv)%*%coef(output)
+      beta.opt[-1,]<-beta.opt[-1,]/x.sd
+      beta.opt[1,]<-beta.opt[1,]-matrix(x.mean%*%beta.opt[-1,])
+    }
+    else{ #added by Xiaolin to deal with cases when baselineX is not null. (12/26/2016)
+      beta.opt<-as.matrix(coef(output))
+    }
     output$coefficients<-beta.opt
-    rownames(output$coefficients)<-names.X
     output$x<-X.orig
+
+    rownames(output$coefficients)<-names.X
     
     # Calculate the variance
     variance<-output$var
     
     if (no.treats == 2){
       colnames(output$coefficients)<-c("Treated")
-      output$var<-ginv(t(X.orig)%*%X.orig)%*%t(X.orig)%*%X%*%svd1$v%*%ginv(diag(svd1$d))%*%variance%*%ginv(diag(svd1$d))%*%t(svd1$v)%*%t(X)%*%X.orig%*%ginv(t(X.orig)%*%X.orig)
+      if (is.null(baselineX)){
+         output$var<-Dx.inv%*%ginv(t(X.orig)%*%X.orig)%*%t(X.orig)%*%X%*%svd1$v%*%ginv(diag(svd1$d))%*%variance%*%ginv(diag(svd1$d))%*%t(svd1$v)%*%t(X)%*%X.orig%*%ginv(t(X.orig)%*%X.orig)%*%Dx.inv
+      }
+      else{
+        output$var<-variance
+      }
       colnames(output$var)<-names.X
       rownames(output$var)<-colnames(output$var)
     }
@@ -189,13 +200,14 @@ CBPS.fit<-function(treat, X, baselineX, diffX, ATT, method, iterations, standard
       trans.var.3.2<-Dx.inv%*%ginv(t(X.orig)%*%X.orig)%*%t(X.orig)%*%X%*%svd1$v%*%ginv(diag(svd1$d))%*%var.3.2%*%ginv(diag(svd1$d))%*%t(svd1$v)%*%t(X)%*%X.orig%*%ginv(t(X.orig)%*%X.orig)%*%Dx.inv
       trans.var.3.3<-Dx.inv%*%ginv(t(X.orig)%*%X.orig)%*%t(X.orig)%*%X%*%svd1$v%*%ginv(diag(svd1$d))%*%var.3.3%*%ginv(diag(svd1$d))%*%t(svd1$v)%*%t(X)%*%X.orig%*%ginv(t(X.orig)%*%X.orig)%*%Dx.inv
       output$var<-rbind(cbind(trans.var.1.1,trans.var.1.2,trans.var.1.3),cbind(trans.var.2.1,trans.var.2.2,trans.var.2.3),cbind(trans.var.3.1,trans.var.3.2,trans.var.3.3))
+        
       colnames(output$var)<-c(paste0(levels(as.factor(treat))[2],": ", names.X),paste0(levels(as.factor(treat))[3], ": ", names.X),paste0(levels(as.factor(treat))[4], ": ", names.X))
       rownames(output$var)<-colnames(output$var)
     }
   } else if (is.numeric(treat)) {
     # Warn if it seems like the user meant to input a categorical treatment
     if (length(unique(treat)) <= 4) warning("Treatment vector is numeric.  Interpreting as a continuous treatment.  To solve for a binary or multi-valued treatment, make treat a factor.")
-    output<-CBPS.Continuous(treat, X, X.bal, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
+    output<-CBPS.Continuous(treat, X, method, k, XprimeX.inv, bal.only, iterations, standardize = standardize, twostep = twostep)
     
     # Reverse svd, centering, and scaling
     d.inv<- svd1$d
@@ -203,15 +215,16 @@ CBPS.fit<-function(treat, X, baselineX, diffX, ATT, method, iterations, standard
     d.inv[d.inv<= 1e-5]<-0
     beta.opt<-svd1$v%*%diag(d.inv)%*%coef(output)
     beta.opt[-1,]<-beta.opt[-1,]/x.sd
-    
+      
     beta.opt[1,]<-beta.opt[1,]-matrix(x.mean%*%beta.opt[-1,])
     output$coefficients<-as.matrix(beta.opt)
-    rownames(output$coefficients)<-c(names.X)
     output$x<-X.orig
+      
+    rownames(output$coefficients)<-c(names.X)
     
     # Calculate variance
     var.1<-output$var
-    output$var<-ginv(t(X.orig)%*%X.orig)%*%t(X.orig)%*%X%*%svd1$v%*%ginv(diag(svd1$d))%*%var.1%*%ginv(diag(svd1$d))%*%t(svd1$v)%*%t(X)%*%X.orig%*%ginv(t(X.orig)%*%X.orig)
+    output$var<-Dx.inv%*%ginv(t(X.orig)%*%X.orig)%*%t(X.orig)%*%X%*%svd1$v%*%ginv(diag(svd1$d))%*%var.1%*%ginv(diag(svd1$d))%*%t(svd1$v)%*%t(X)%*%X.orig%*%ginv(t(X.orig)%*%X.orig)%*%Dx.inv
     rownames(output$var)<-names.X
     colnames(output$var)<-rownames(output$var)
   } else {

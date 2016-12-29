@@ -10,8 +10,8 @@ For cross-sectional data, the method can take continuous treatments and treatmen
 	  CBPS(formula, data, na.action, ATT = 1, iterations = 1000, 
 	       standardize = TRUE, method = "over", twostep = TRUE, 
 		   baseline.formula = NULL, diff.formula = NULL, ...)
-	  CBPS.fit(treat, X, baselineX, diffX, ATT, method, iterations, 
-			   standardize, twostep, ...)
+	  CBPS.fit(treat, X, baselineX, diffX, ATT, method, 
+			   iterations, standardize, twostep, ...)
 }
 \arguments{
   \item{formula}{An object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.}
@@ -34,7 +34,7 @@ For cross-sectional data, the method can take continuous treatments and treatmen
 \value{
   \item{fitted.values}{The fitted propensity score}
   \item{deviance}{Minus twice the log-likelihood of the CBPS fit}
-  \item{weights}{The optimal weights.  Let \eqn{\pi_i = f(T_i | X_i)}{\pi_i = f(T_i | X_i)}.  For binary ATE, these are given by \eqn{\frac{T_i}{\pi_i} + \frac{(1 - T_i)}{(1 - \pi_i)}}{T_i/\pi_i + (1 - T_i)/(1 - \pi_i)}.  For binary ATT, these are given by \eqn{\frac{n}{n_t} * T_i + \frac{n}{n_t} * \frac{1 - T_i}{1 - \pi_i}}{n/n_t * T_i + n/n_t * (1 - T_i)/(1 - \pi_i)}.  For multi_valued treatments, these are given by \eqn{\sum_{j=0}^{J-1} T_{i,j} / \pi_{i,j}}{\sum_{j=0}^{J-1} T_i,j / \pi_i,j}.  For continuous treatments, these are given by \eqn{\frac{f(T_i)}{f(T_i | X_i)}}{f(T_i) / f(T_i | X_i) }.  These expressions for weights are all before standardization (i.e. with standardize=\code{FALSE}).  Standardization will make weights sum to 1 within each treatment group.  For continuous treatment, standardization will make all weights sum to 1.}
+  \item{weights}{The optimal weights.  Let \eqn{\pi_i = f(T_i | X_i)}{\pi_i = f(T_i | X_i)}.  For binary ATE, these are given by \eqn{\frac{T_i}{\pi_i} + \frac{(1 - T_i)}{(1 - \pi_i)}}{T_i/\pi_i + (1 - T_i)/(1 - \pi_i)}.  For binary ATT, these are given by \eqn{\frac{n}{n_t} * \frac{T_i - \pi_i}{1 - \pi_i}}{n/n_t * (T_i - \pi_i)/(1 - \pi_i)}.  For multi_valued treatments, these are given by \eqn{\sum_{j=0}^{J-1} T_{i,j} / \pi_{i,j}}{\sum_{j=0}^{J-1} T_i,j / \pi_i,j}.  For continuous treatments, these are given by \eqn{\frac{f(T_i)}{f(T_i | X_i)}}{f(T_i) / f(T_i | X_i) }.  These expressions for weights are all before standardization (i.e. with standardize=\code{FALSE}).  Standardization will make weights sum to 1 within each treatment group.  For continuous treatment, standardization will make all weights sum to 1.}
   \item{y}{The treatment vector used}
   \item{x}{The covariate matrix}
   \item{model}{The model frame}
@@ -55,9 +55,7 @@ For cross-sectional data, the method can take continuous treatments and treatmen
 
 
 \seealso{\link{summary.CBPS}}
-
 \examples{
-\dontrun{
 ###
 ### Example: propensity score matching
 ###
@@ -69,11 +67,11 @@ fit <- CBPS(treat ~ age + educ + re75 + re74 +
 			I(re75==0) + I(re74==0), 
 			data = LaLonde, ATT = TRUE)
 summary(fit)
+\dontrun{
 ## matching via MatchIt: one to one nearest neighbor with replacement
 library(MatchIt)
 m.out <- matchit(treat ~ fitted(fit), method = "nearest", 
 				 data = LaLonde, replace = TRUE)
-
 
 ### Example: propensity score weighting 
 ###

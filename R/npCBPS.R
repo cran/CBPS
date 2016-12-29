@@ -1,5 +1,5 @@
 #npCBPS parses the formula object and passes the result to npCBPS.fit
-npCBPS <- function(formula, data, na.action, corprior=.1, print.level=0, ...) {
+npCBPS <- function(formula, data, na.action, corprior=.01, print.level=0, ...) {
   if (missing(data)) 
     data <- environment(formula)
   call <- match.call()
@@ -50,7 +50,7 @@ npCBPS.fit=function(treat, X, corprior, print.level, ...){
   
   #Constraint matrix
   if (is.numeric(D)){
-    print("Estimating npCBPS a continuous treatment.  To estimate for a binary or multi-valued treatment, use a factor.")
+    print("Estimating npCBPS as a continuous treatment.  To estimate for a binary or multi-valued treatment, use a factor.")
     #re-orient each X to have positive correlation with T
     X=X%*%diag(as.vector(sign(cor(X,D))),nrow=ncol(X))
     D=scale(D,center=TRUE, scale=TRUE)  
