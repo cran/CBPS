@@ -9,9 +9,11 @@ For cross-sectional data, the method can take continuous treatments and treatmen
 \usage{
 	  CBPS(formula, data, na.action, ATT = 1, iterations = 1000, 
 	       standardize = TRUE, method = "over", twostep = TRUE, 
-		   baseline.formula = NULL, diff.formula = NULL, ...)
+		   sample.weights = NULL, baseline.formula = NULL, 
+		   diff.formula = NULL, ...)
 	  CBPS.fit(treat, X, baselineX, diffX, ATT, method, 
-			   iterations, standardize, twostep, ...)
+			   iterations, standardize, twostep, 
+			   sample.weights, ...)
 }
 \arguments{
   \item{formula}{An object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted.}
@@ -24,8 +26,9 @@ For cross-sectional data, the method can take continuous treatments and treatmen
   \item{twostep}{Default is \code{TRUE} for a two-step estimator, which will run substantially faster than continuous-updating.  Set to \code{FALSE} to use the continuous-updating estimator described by Imai and Ratkovic (2014).}
   \item{treat}{A vector of treatment assignments.  Binary or multi-valued treatments should be factors.  Continuous treatments should be numeric.}
   \item{X}{A covariate matrix.} 
-  \item{baseline.formula}{Used only to fit CBPSOptimal (see Fan et al). Currently only works with binary treatments.  A formula specifying the balancing covariates in the baseline outcome model. Namely h_1(). Eg. ~X2+X4 means X_2 and X_4 are the baseline outcome model covariates.}
-  \item{diff.formula}{Used only to fit CBPSOptimal (see Fan et al).  Currently only works with binary treatments.  A formula specifying the balancing covariates in the difference between the treatment and baseline outcome model.Namely h_2().Eg.~X1+X3 means X_1 and X_3 are covariates in the difference between the treatment and baseline outcome models.}
+  \item{sample.weights}{Survey sampling weights for the observations, if applicable.  When left NULL, defaults to a sampling weight of 1 for each observation.}
+  \item{baseline.formula}{Used only to fit iCBPS (see Fan et al). Currently only works with binary treatments.  A formula specifying the balancing covariates in the baseline outcome model, i.e., E(Y(0)|X).}
+  \item{diff.formula}{Used only to fit iCBPS (see Fan et al).  Currently only works with binary treatments.  A formula specifying the balancing covariates in the difference between the treatment and baseline outcome model, i.e., E(Y(1)-Y(0)|X).}
   \item{baselineX}{Similar to \code{baseline.formula}, but in matrix form.}
   \item{diffX}{Similar to \code{diff.formula}, but in matrix form.}
   \item{...}{Other parameters to be passed through to \code{optim()}.}
@@ -34,7 +37,7 @@ For cross-sectional data, the method can take continuous treatments and treatmen
 \value{
   \item{fitted.values}{The fitted propensity score}
   \item{deviance}{Minus twice the log-likelihood of the CBPS fit}
-  \item{weights}{The optimal weights.  Let \eqn{\pi_i = f(T_i | X_i)}{\pi_i = f(T_i | X_i)}.  For binary ATE, these are given by \eqn{\frac{T_i}{\pi_i} + \frac{(1 - T_i)}{(1 - \pi_i)}}{T_i/\pi_i + (1 - T_i)/(1 - \pi_i)}.  For binary ATT, these are given by \eqn{\frac{n}{n_t} * \frac{T_i - \pi_i}{1 - \pi_i}}{n/n_t * (T_i - \pi_i)/(1 - \pi_i)}.  For multi_valued treatments, these are given by \eqn{\sum_{j=0}^{J-1} T_{i,j} / \pi_{i,j}}{\sum_{j=0}^{J-1} T_i,j / \pi_i,j}.  For continuous treatments, these are given by \eqn{\frac{f(T_i)}{f(T_i | X_i)}}{f(T_i) / f(T_i | X_i) }.  These expressions for weights are all before standardization (i.e. with standardize=\code{FALSE}).  Standardization will make weights sum to 1 within each treatment group.  For continuous treatment, standardization will make all weights sum to 1.}
+  \item{weights}{The optimal weights.  Let \eqn{\pi_i = f(T_i | X_i)}{\pi_i = f(T_i | X_i)}.  For binary ATE, these are given by \eqn{\frac{T_i}{\pi_i} + \frac{(1 - T_i)}{(1 - \pi_i)}}{T_i/\pi_i + (1 - T_i)/(1 - \pi_i)}.  For binary ATT, these are given by \eqn{\frac{n}{n_t} * \frac{T_i - \pi_i}{1 - \pi_i}}{n/n_t * (T_i - \pi_i)/(1 - \pi_i)}.  For multi_valued treatments, these are given by \eqn{\sum_{j=0}^{J-1} T_{i,j} / \pi_{i,j}}{\sum_{j=0}^{J-1} T_i,j / \pi_i,j}.  For continuous treatments, these are given by \eqn{\frac{f(T_i)}{f(T_i | X_i)}}{f(T_i) / f(T_i | X_i) }.  These expressions for weights are all before standardization (i.e. with standardize=\code{FALSE}).  Standardization will make weights sum to 1 within each treatment group.  For continuous treatment, standardization will make all weights sum to 1.  If sampling weights are used, the weight for each observation is multiplied by the survey sampling weight.}
   \item{y}{The treatment vector used}
   \item{x}{The covariate matrix}
   \item{model}{The model frame}
@@ -46,11 +49,15 @@ For cross-sectional data, the method can take continuous treatments and treatmen
   \item{sigmasq}{The sigma-squared value, for continuous treatments only}
   \item{J}{The J-statistic at convergence}
   \item{mle.J}{The J-statistic for the parameters from maximum likelihood estimation}
-  \item{var}{The covariance matrix, evaluated numerically from \code{optim()}.}
+  \item{var}{The covariance matrix for the coefficients.}
+  \item{Ttilde}{For internal use only.}
+  \item{Xtilde}{For internal use only.}
+  \item{beta.tilde}{For internal use only.}
+  \item{simgasq.tilde}{For internal use only.}
  }
 \references{Imai, Kosuke and Marc Ratkovic.  2014. ``Covariate Balancing Propensity Score.'' Journal of the Royal Statistical Society, Series B (Statistical Methodology). \url{http://imai.princeton.edu/research/CBPS.html}			\cr
 			Fong, Christian, Chad Hazlett, and Kosuke Imai.  ``Parametric and Nonparametric Covariate Balancing Propensity Score for General Treatment Regimes.''  Unpublished Manuscript. \url{http://imai.princeton.edu/research/files/CBGPS.pdf}	\cr
-			Fan, Jianqing and Imai, Kosuke and Liu, Han and Ning, Yang and Yang, Xiaolin. ``Improving Covariate Balancing Propensity Score: A Doubly Robust and Efficient Approach.'' Unpublished Manuscript.}
+			Fan, Jianqing and Imai, Kosuke and Liu, Han and Ning, Yang and Yang, Xiaolin. ``Improving Covariate Balancing Propensity Score: A Doubly Robust and Efficient Approach.'' Unpublished Manuscript. \url{http://imai.princeton.edu/research/CBPStheory.html}}
 \author{Christian Fong, Marc Ratkovic, Kosuke Imai, and Xiaolin Yang; The CBPS function is based on the code for version 2.15.0 of the glm function implemented in the stats package, originally written by Simon Davies.  This documentation is likewise modeled on the documentation for glm and borrows its language where the arguments and values are the same.}
 
 
@@ -106,8 +113,8 @@ treat <- cbind(1,X)\%*\%beta + rnorm(n, sd = 5)
 
 treat.effect <- 1
 effect.beta <- rnorm(ncol(X))
-y <- rbinom(n, 1, (1 + exp(mean(-treat.effect*treat - 
-				   X\%*\%effect.beta)))^-1)
+y <- rbinom(n, 1, (1 + exp(-treat.effect*treat - 
+				   X\%*\%effect.beta))^-1)
 
 fit2 <- CBPS(treat ~ X)
 summary(fit2)
@@ -117,7 +124,7 @@ summary(glm(y ~ treat + X, weights = fit2$weights,
 rm(list=c("n", "X", "beta", "treat", "treat.effect",
 		  "effect.beta", "y", "fit2"))
 
-### Example: Improved CBPS from Fan et al
+### Simulation example: Improved CBPS (or iCBPS) from Fan et al
 set.seed(123456)
 n <- 500
 X <- mvrnorm(n, mu = rep(0, 4), Sigma = diag(4))
@@ -125,7 +132,7 @@ prop <- 1 / (1 + exp(X[,1] - 0.5 * X[,2] + 0.25*X[,3] + 0.1 * X[,4]))
 treat <- rbinom(n, 1, prop)
 y1 <- 210 + 27.4*X[,1] + 13.7*X[,2] + 13.7*X[,3] + 13.7*X[,4] + rnorm(n)
 y0 <- 210 + 13.7*X[,2] + 13.7*X[,3] + 13.7*X[,4] + rnorm(n)
-##Estimate CBPS with a misspecificied model
+##Estimate iCBPS with a misspecificied model
 X.mis <- cbind(exp(X[,1]/2), X[,2]*(1+exp(X[,1]))^(-1)+10, 
 			   (X[,1]*X[,3]/25+.6)^3, (X[,2]+X[,4]+20)^2)
 fit1 <- CBPS(treat ~ X.mis, baseline.formula=~X.mis[,2:4], 

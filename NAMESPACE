@@ -2,14 +2,16 @@ importFrom(MASS, mvrnorm, ginv)
 importFrom(nnet, multinom)
 importFrom(numDeriv, jacobian)
 importFrom(MatchIt, matchit)
+importFrom(glmnet,cv.glmnet)
 importFrom("graphics", "abline", "axis", "layout", "mtext", "par",
            "plot", "points")
 importFrom("stats", ".getXlevels", "as.formula", "binomial", "coef",
            "cor", "dnorm", "glm", "is.empty.model", "lm", "model.frame",
            "model.matrix", "model.response", "naprint", "optim",
-           "optimize", "pnorm", "sd", "symnum", "var", "terms")
+           "optimize", "pnorm", "predict", "sd", "symnum", "var", "terms")
 importFrom("utils", "packageDescription")
-export(CBPS, summary.CBPS, CBMSM, npCBPS, balance)
+export(CBPS, summary.CBPS, CBMSM, npCBPS, hdCBPS, CBIV, balance, vcov_outcome)
+
 
 S3method(summary, CBPS)
 S3method(print, CBPS)
@@ -18,6 +20,7 @@ S3method(plot, CBPS)
 S3method(balance, CBPS)
 S3method(plot, CBPSContinuous)
 S3method(balance, CBPSContinuous)
+S3method(vcov_outcome, CBPSContinuous)
 S3method(plot,CBMSM)
 S3method(balance, CBMSM)
 S3method(plot, npCBPS)
