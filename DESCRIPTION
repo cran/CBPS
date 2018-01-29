@@ -1,6 +1,6 @@
 Package: CBPS
-Version: 0.16
-Date: 2017-12-19
+Version: 0.17
+Date: 2018-01-29
 Title: Covariate Balancing Propensity Score
 Authors@R: c(
   person("Christian", "Fong", , "christianfong@stanford.edu", c("aut", "cre")),
@@ -10,7 +10,7 @@ Authors@R: c(
   person("Xiaolin", "Yang", , "xiaoliny@princeton.edu", c("ctb")),
   person("Sida", "Peng", , "sp947@cornell.edu", c("ctb"))
   )
-Depends: R (>= 3.3.2), MASS, MatchIt, nnet, numDeriv, glmnet
+Depends: R (>= 3.4), MASS, MatchIt, nnet, numDeriv, glmnet
 Imports:
 Description: Implements the covariate balancing propensity score (CBPS) proposed
     by Imai and Ratkovic (2014) <DOI:10.1111/rssb.12027>. The propensity score is
@@ -36,7 +36,7 @@ NeedsCompilation: no
 Repository: CRAN
 RoxygenNote: 6.0.1
 Suggests: testthat
-Packaged: 2017-12-19 19:26:33 UTC; Christian
+Packaged: 2018-01-29 23:00:06 UTC; Christian
 Author: Christian Fong [aut, cre],
   Marc Ratkovic [aut],
   Kosuke Imai [aut],
@@ -44,4 +44,6 @@ Author: Christian Fong [aut, cre],
   Xiaolin Yang [ctb],
   Sida Peng [ctb]
 Maintainer: Christian Fong <christianfong@stanford.edu>
-Date/Publication: 2017-12-19 20:58:01 UTC
+X-CRAN-Comment: Archived on 2018-01-25 as check errors were not
+        corrected despite reminders.
+Date/Publication: 2018-01-29 23:42:16 UTC
