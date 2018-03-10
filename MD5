@@ -1,14 +1,14 @@
-a191af453ed0160ea49217f3b3a8c773 *ChangeLog
-26345e3aae052fdb5e8c99418122fd79 *DESCRIPTION
+d99d1b5450fa65ca3c93ac7bd057d54d *ChangeLog
+7553490f8cd5bfe86b4d1fb0b3c8e053 *DESCRIPTION
 c1a0e9fbbf9cb5ac7de937d6393b828d *NAMESPACE
 ac0fb8fe0d8415a5db48257b1d087939 *R/BlackwellHelpCode.R
 2bcebaa8800e4a5cb039f2903fafeca0 *R/CBIV.R
 ed543e9578bb0f116885ee64a31c174d *R/CBMSM.R
 d876fd128c18a68b89b237dfc4b4e78c *R/CBPS-package.R
-2f898bfa5bbe79dcc3d6c86f4bd8861b *R/CBPSBinary.R
-b31ac86b79974c157b1c646ee306cc59 *R/CBPSContinuous.r
+b1fe5442f11de701ef35e046b5de4126 *R/CBPSBinary.R
+b8bb8eb0f769426282f49aa8414cb667 *R/CBPSContinuous.r
 a074b57ebfcc54f3728ce869c1d55dd5 *R/CBPSMain.R
-8d82c556ceb458eb70171bc16759647b *R/CBPSMultiTreat.r
+92389b8099e4ce3256da9bcb0ff6d043 *R/CBPSMultiTreat.r
 73d04edf1ea05dfaaa3a2a403ee1b42c *R/CBPSOptimalBinary.R
 1ed1c7b28a30f2a1609d632384a43a63 *R/analytic_vcov.R
 6413c569e0ba73029ad116ff555ddded *R/hdCBPS.R
@@ -40,4 +40,4 @@ b55dc918f8e09c46a90d1732e05c06e0 *man/print.CBPS.Rd
 38d2dd9a626cb4f124c02fdfe33d31d5 *man/vcov_outcome.CBPSContinuous.Rd
 ba7235ca766495917dad951802e155c0 *man/vcov_outcome.Rd
 169f55105bcf1e2703f18e31ecb856c7 *tests/testthat.R
-e89df7f8d5c4e3f39d90edb369e3f01a *tests/testthat/test-all.R
+d50edb2370a29e752c822b45962daed3 *tests/testthat/test-all.R
