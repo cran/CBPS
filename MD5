@@ -1,13 +1,13 @@
-d99d1b5450fa65ca3c93ac7bd057d54d *ChangeLog
-7553490f8cd5bfe86b4d1fb0b3c8e053 *DESCRIPTION
+d869a9b7cb4ffd99490228d3a82f85d6 *ChangeLog
+f98ef01f27eabc99e8af13a110720839 *DESCRIPTION
 c1a0e9fbbf9cb5ac7de937d6393b828d *NAMESPACE
 ac0fb8fe0d8415a5db48257b1d087939 *R/BlackwellHelpCode.R
 2bcebaa8800e4a5cb039f2903fafeca0 *R/CBIV.R
-ed543e9578bb0f116885ee64a31c174d *R/CBMSM.R
+279033f98fd1d8973e9cc148cb0088c6 *R/CBMSM.R
 d876fd128c18a68b89b237dfc4b4e78c *R/CBPS-package.R
 b1fe5442f11de701ef35e046b5de4126 *R/CBPSBinary.R
 b8bb8eb0f769426282f49aa8414cb667 *R/CBPSContinuous.r
-a074b57ebfcc54f3728ce869c1d55dd5 *R/CBPSMain.R
+e7341f9a619c9e8828c3c47c1d35194e *R/CBPSMain.R
 92389b8099e4ce3256da9bcb0ff6d043 *R/CBPSMultiTreat.r
 73d04edf1ea05dfaaa3a2a403ee1b42c *R/CBPSOptimalBinary.R
 1ed1c7b28a30f2a1609d632384a43a63 *R/analytic_vcov.R
@@ -18,8 +18,8 @@ f48d94dbea34afd08843afadf0f51262 *data/Blackwell.tab.gz
 eb126b9197b61692de1ed1fcd71a16c8 *data/LaLonde.tab.gz
 8ef5c3a3997f9b5b9784691c3d488939 *man/Blackwell.Rd
 4695da595b5da0329621ecdd57169ae9 *man/CBIV.Rd
-bf7b33a1da295f9c12071845f9dc0eab *man/CBMSM.Rd
-7e88e171360976faadbec87fba8eac9b *man/CBMSM.fit.Rd
+2db4a9aee27bb1b80d82648cdbc3cb4a *man/CBMSM.Rd
+71c4df69d3100c7900f9d71e963d9de0 *man/CBMSM.fit.Rd
 8f78fd3f5fd1a98894dc7b7abd6744df *man/CBPS.Rd
 b37c75dd42246e09877ce2962f8bbcd8 *man/CBPS.fit.Rd
 f6557eccedfe514d5b0f170fc597534a *man/LaLonde.Rd
@@ -40,4 +40,4 @@ b55dc918f8e09c46a90d1732e05c06e0 *man/print.CBPS.Rd
 38d2dd9a626cb4f124c02fdfe33d31d5 *man/vcov_outcome.CBPSContinuous.Rd
 ba7235ca766495917dad951802e155c0 *man/vcov_outcome.Rd
 169f55105bcf1e2703f18e31ecb856c7 *tests/testthat.R
-d50edb2370a29e752c822b45962daed3 *tests/testthat/test-all.R
+39a790ef81fe7a402de4be237594e96b *tests/testthat/test-all.R
