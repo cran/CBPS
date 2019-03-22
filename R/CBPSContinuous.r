@@ -176,13 +176,15 @@ CBPS.Continuous<-function(treat, X, method, k, XprimeX.inv, bal.only, iterations
   probs.mle<-pmax(log(probs.min),probs.mle)
   
   params.curr<-c(mcoef, log(sigmasq))
-  mle.J<-gmm.loss(params.curr)
+  mle.J <- NA
+  try(mle.J<-gmm.loss(params.curr))
   mle.bal<-bal.loss(params.curr)
-  
-  alpha.func<-function(alpha) gmm.loss(params.curr*alpha)      
-  params.curr<-params.curr*optimize(alpha.func,interval=c(.8,1.1))$min
-  glm.invV<-gmm.func(params.curr)$invV
-
+ 
+  try({glm.invV<-gmm.func(params.curr)$invV
+       alpha.func<-function(alpha) gmm.loss(params.curr*alpha)      
+       params.curr<-params.curr*optimize(alpha.func,interval=c(.8,1.1))$min
+      })
+                          
   ##Generate estimates for balance and CBPS
   gmm.init<-params.curr
   
@@ -203,7 +205,7 @@ CBPS.Continuous<-function(treat, X, method, k, XprimeX.inv, bal.only, iterations
   
   pick.glm<-0
   if(!bal.only)
-  {
+  {    
     if (twostep)
     {
       gmm.glm.init<-optim(gmm.init, gmm.loss, control=list("maxit"=iterations), method="BFGS", hessian=TRUE, invV = glm.invV, gr = gmm.gradient)
