@@ -98,9 +98,9 @@
 #' Propensity Score.'' Journal of the Royal Statistical Society, Series B
 #' (Statistical Methodology).
 #' \url{http://imai.princeton.edu/research/CBPS.html} \cr Fong, Christian, Chad
-#' Hazlett, and Kosuke Imai.  ``Parametric and Nonparametric Covariate
-#' Balancing Propensity Score for General Treatment Regimes.'' Unpublished
-#' Manuscript. \url{http://imai.princeton.edu/research/files/CBGPS.pdf} \cr
+#' Hazlett, and Kosuke Imai.  2018.  ``Covariate Balancing Propensity Score
+#' for a Continuous Treatment.'' The Annals of Applied Statistics.
+#' \url{http://imai.princeton.edu/research/files/CBGPS.pdf} \cr
 #' Fan, Jianqing and Imai, Kosuke and Liu, Han and Ning, Yang and Yang,
 #' Xiaolin. ``Improving Covariate Balancing Propensity Score: A Doubly Robust
 #' and Efficient Approach.'' Unpublished Manuscript.
@@ -148,7 +148,10 @@
 #' 
 #' rm(list=c("y","X","prop","treat","n","X.mis","fit1"))
 #' 
-#' ### Example: Continuous Treatment
+#' ### Example: Continuous Treatment as in Fong, Hazlett, 
+#' ### and Imai (2018).  See 
+#' ### https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/AIF4PI
+#' ### for a real data example.
 #' set.seed(123456)
 #' n <- 1000
 #' X <- mvrnorm(n, mu = rep(0,2), Sigma = diag(2))

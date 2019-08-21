@@ -1,5 +1,5 @@
-a14834b54b0d14879acf1b26d955cc5a *ChangeLog
-16462d44ab532f9a3646d2a3d157bbdd *DESCRIPTION
+d1d81df1df720b56a0f91679f734bbba *ChangeLog
+76ba418e621645a2d00c9dcd72545252 *DESCRIPTION
 c1a0e9fbbf9cb5ac7de937d6393b828d *NAMESPACE
 ac0fb8fe0d8415a5db48257b1d087939 *R/BlackwellHelpCode.R
 2bcebaa8800e4a5cb039f2903fafeca0 *R/CBIV.R
@@ -7,7 +7,7 @@ ac0fb8fe0d8415a5db48257b1d087939 *R/BlackwellHelpCode.R
 d876fd128c18a68b89b237dfc4b4e78c *R/CBPS-package.R
 b1fe5442f11de701ef35e046b5de4126 *R/CBPSBinary.R
 f330efbb7c97bcb59186594fbf3e1406 *R/CBPSContinuous.r
-e7341f9a619c9e8828c3c47c1d35194e *R/CBPSMain.R
+92c00844b36b0303b7d64f80b3271859 *R/CBPSMain.R
 92389b8099e4ce3256da9bcb0ff6d043 *R/CBPSMultiTreat.r
 73d04edf1ea05dfaaa3a2a403ee1b42c *R/CBPSOptimalBinary.R
 1ed1c7b28a30f2a1609d632384a43a63 *R/analytic_vcov.R
@@ -18,9 +18,9 @@ f48d94dbea34afd08843afadf0f51262 *data/Blackwell.tab.gz
 eb126b9197b61692de1ed1fcd71a16c8 *data/LaLonde.tab.gz
 8ef5c3a3997f9b5b9784691c3d488939 *man/Blackwell.Rd
 4695da595b5da0329621ecdd57169ae9 *man/CBIV.Rd
-2db4a9aee27bb1b80d82648cdbc3cb4a *man/CBMSM.Rd
-71c4df69d3100c7900f9d71e963d9de0 *man/CBMSM.fit.Rd
-8f78fd3f5fd1a98894dc7b7abd6744df *man/CBPS.Rd
+8f2c40f0a9036da014d2ef17a9835303 *man/CBMSM.Rd
+3cc4da94fbca27ee88586c51350dd837 *man/CBMSM.fit.Rd
+d3515bf33bcf3aa563c63e5308e85566 *man/CBPS.Rd
 b37c75dd42246e09877ce2962f8bbcd8 *man/CBPS.fit.Rd
 f6557eccedfe514d5b0f170fc597534a *man/LaLonde.Rd
 9c221bb8158a297110caf7cb7efade13 *man/balance.CBPS.Rd
@@ -30,8 +30,8 @@ c4b8a7d36aca95a94eda7d7e705734b9 *man/balance.CBPSContinuous.Rd
 1912fde451ed033e3471f6a78c9cc557 *man/hdCBPS.Rd
 7ea622b0fa246fc8ccb36629d17dcc9a *man/npCBPS.Rd
 e660b3644ff08e75ede782d1cd2a386f *man/npCBPS.fit.Rd
-1ce6dd8175da217eec65aaf5002947bf *man/plot.CBMSM.Rd
-9e7e20e5c8771ed66ab85258354881b0 *man/plot.CBPS.Rd
+292c9efbd0a7519b36ea8645d4c6b91b *man/plot.CBMSM.Rd
+0de180178ce9d192fcb0dd9868758d66 *man/plot.CBPS.Rd
 35dcc861431ffaabdacf6b89a0e732f4 *man/plot.CBPSContinuous.Rd
 64bfed2afe602c00d1cc182b3324c58c *man/plot.npCBPS.Rd
 b55dc918f8e09c46a90d1732e05c06e0 *man/print.CBPS.Rd
