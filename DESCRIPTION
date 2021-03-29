@@ -1,6 +1,6 @@
 Package: CBPS
-Version: 0.21
-Date: 2019-08-20
+Version: 0.22
+Date: 2021-03-28
 Title: Covariate Balancing Propensity Score
 Authors@R: c(
   person("Christian", "Fong", , "cjfong@umich.edu", c("aut", "cre")),
@@ -35,7 +35,7 @@ NeedsCompilation: no
 Repository: CRAN
 RoxygenNote: 6.1.1
 Suggests: testthat
-Packaged: 2019-08-20 21:47:22 UTC; chris
+Packaged: 2021-03-28 21:31:12 UTC; chris
 Author: Christian Fong [aut, cre],
   Marc Ratkovic [aut],
   Kosuke Imai [aut],
@@ -43,4 +43,4 @@ Author: Christian Fong [aut, cre],
   Xiaolin Yang [ctb],
   Sida Peng [ctb]
 Maintainer: Christian Fong <cjfong@umich.edu>
-Date/Publication: 2019-08-21 07:40:18 UTC
+Date/Publication: 2021-03-29 09:22:18 UTC
